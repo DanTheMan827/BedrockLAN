@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>BedrockLanAdvertiser</RootNamespace>
+    <!-- WebRTC transfer server (needed for authenticated NetherNet servers). Disable with: dotnet build -p:EnableWebRtc=false -->
+    <EnableWebRtc Condition="'$(EnableWebRtc)' == ''">true</EnableWebRtc>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EnableWebRtc)' == 'true'">
+    <DefineConstants>$(DefineConstants);ENABLE_WEBRTC</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BedrockLan\BedrockLan.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(EnableWebRtc)' == 'true'">
+    <ProjectReference Include="..\BedrockLan.WebRtc\BedrockLan.WebRtc.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="servers.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

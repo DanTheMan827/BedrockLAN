@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+**/persist/
+**/.vs/
+**/*.user
+.git/
+src/BedrockLanApp/
+tests/
+*.zip

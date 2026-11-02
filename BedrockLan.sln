@@ -1,0 +1,37 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BedrockLan", "src\BedrockLan\BedrockLan.csproj", "{D236C0E3-BC2F-4A6A-A5CB-52EBF23BF212}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BedrockLanAdvertiser", "src\BedrockLanAdvertiser\BedrockLanAdvertiser.csproj", "{AE00C3EA-5B5D-4724-9376-96C906322288}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BedrockLan.Tests", "tests\BedrockLan.Tests\BedrockLan.Tests.csproj", "{5CCA847A-FBDE-47D5-8F1A-B801D070DE00}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BedrockLan.WebRtc", "src\BedrockLan.WebRtc\BedrockLan.WebRtc.csproj", "{B3CBC7E4-31B1-4AFF-BD0B-9907ECFD19C4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D236C0E3-BC2F-4A6A-A5CB-52EBF23BF212}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D236C0E3-BC2F-4A6A-A5CB-52EBF23BF212}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D236C0E3-BC2F-4A6A-A5CB-52EBF23BF212}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D236C0E3-BC2F-4A6A-A5CB-52EBF23BF212}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE00C3EA-5B5D-4724-9376-96C906322288}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE00C3EA-5B5D-4724-9376-96C906322288}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE00C3EA-5B5D-4724-9376-96C906322288}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE00C3EA-5B5D-4724-9376-96C906322288}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5CCA847A-FBDE-47D5-8F1A-B801D070DE00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CCA847A-FBDE-47D5-8F1A-B801D070DE00}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CCA847A-FBDE-47D5-8F1A-B801D070DE00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CCA847A-FBDE-47D5-8F1A-B801D070DE00}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3CBC7E4-31B1-4AFF-BD0B-9907ECFD19C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3CBC7E4-31B1-4AFF-BD0B-9907ECFD19C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3CBC7E4-31B1-4AFF-BD0B-9907ECFD19C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3CBC7E4-31B1-4AFF-BD0B-9907ECFD19C4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

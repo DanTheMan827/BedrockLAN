@@ -1,0 +1,17 @@
+# docker compose up -d
+services:
+  bedrock-lan:
+    build: .
+    image: bedrock-lan
+    container_name: bedrock-lan
+    restart: unless-stopped
+    # Required: LAN discovery relies on UDP broadcasts, which the bridge network doesn't carry.
+    network_mode: host
+    volumes:
+      - bedrock-lan-data:/data              # keeps persist/nethernet-identity.pem across restarts
+      # - ./servers.json:/data/servers.json:ro   # optional: use a config file instead of arguments
+    # Servers as arguments (or "--config", "/data/servers.json" with the mount above):
+    command: ["play.example.com", "192.168.1.20:19133"]
+
+volumes:
+  bedrock-lan-data:

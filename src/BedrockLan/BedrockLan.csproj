@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>BedrockLan</RootNamespace>
+    <AssemblyName>BedrockLan</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <PackageId>BedrockLan</PackageId>
+    <Description>Advertise Minecraft: Bedrock Edition servers on the local network over RakNet and NetherNet, without proxying game traffic.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BedrockLan.WebRtc" />
+    <InternalsVisibleTo Include="BedrockLan.Tests" />
+  </ItemGroup>
+
+</Project>

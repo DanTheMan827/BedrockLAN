@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>BedrockLan.WebRtc</RootNamespace>
+    <Description>Optional minimal NetherNet (WebRTC) server for BedrockLan that issues a Transfer packet. Uses SIPSorcery.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SIPSorcery" Version="10.0.17" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BedrockLan\BedrockLan.csproj" />
+  </ItemGroup>
+
+</Project>

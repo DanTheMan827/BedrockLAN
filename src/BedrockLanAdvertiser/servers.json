@@ -1,0 +1,13 @@
+{
+  // Just list hosts. Each one is queried to work out what it is
+  // (NetherNet/WebRTC server, NetherNet LAN world, or classic RakNet server).
+  // Add ":port" if it isn't 19132.
+  "servers": [
+    "play.example.com",
+    "192.168.10.20",
+    "10.8.0.15:19133",
+
+    // Use an object only when you want to override something.
+    { "host": "192.168.10.30", "name": "Survival (basement PC)" }
+  ]
+}
