@@ -28,6 +28,7 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
     private string? _lastError;
     private string? _displayName;
     private string? _levelName;
+    private string? _namePrefix;
     private string? _transferHost;
     private int _transferPort;
     private long _transferCount;
@@ -51,6 +52,7 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
         Options = options;
         _displayName = options.DisplayName;
         _levelName = options.LevelName;
+        _namePrefix = options.NamePrefix;
         _transferHost = options.TransferHost;
         _transferPort = options.TransferPort ?? 0;
         NetherNetId = UdpSockets.RandomId();
@@ -106,6 +108,16 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
     {
         get => Volatile.Read(ref _displayName);
         set => Volatile.Write(ref _displayName, value);
+    }
+
+    /// <summary>
+    /// Text put in front of the advertised name (after formatting codes are stripped from the name, so it may hold
+    /// characters that stripping would remove, such as control characters). Null or empty = no prefix.
+    /// </summary>
+    public string? NamePrefix
+    {
+        get => Volatile.Read(ref _namePrefix);
+        set => Volatile.Write(ref _namePrefix, value);
     }
 
     /// <summary>Level/sub-MOTD shown instead of the upstream's. Null = forward the upstream's.</summary>
@@ -368,7 +380,7 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
             };
         }
 
-        motd.Motd = BedrockText.StripFormatting(DisplayName ?? motd.Motd);
+        motd.Motd = NamePrefix + BedrockText.StripFormatting(DisplayName ?? motd.Motd);
         motd.SubMotd = BedrockText.StripFormatting(LevelName ?? motd.SubMotd);
 
         motd.ServerGuid = guid;
@@ -387,11 +399,12 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
         var status = Status;
         var displayName = DisplayName;
         var levelName = LevelName;
+        var prefix = NamePrefix;
         if (status?.NetherNetData is { } upstream)
         {
             // A real LAN world already uses the fields the way the client expects; only apply overrides.
             var data = upstream.Clone();
-            data.LevelName = BedrockText.StripFormatting(displayName ?? data.LevelName);
+            data.LevelName = prefix + BedrockText.StripFormatting(displayName ?? data.LevelName);
             data.ServerName = BedrockText.StripFormatting(levelName ?? data.ServerName);
             return data.ToBytes();
         }
@@ -403,7 +416,7 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
 
         return new NetherNetServerData
         {
-            LevelName = BedrockText.StripFormatting(displayName ?? NonEmpty(status?.Name) ?? Address),
+            LevelName = prefix + BedrockText.StripFormatting(displayName ?? NonEmpty(status?.Name) ?? Address),
             ServerName = BedrockText.StripFormatting(levelName ?? status?.Level ?? ""),
             Protocol = status?.Protocol ?? 0,
             Version = status?.Version ?? "",

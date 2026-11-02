@@ -2,8 +2,9 @@ namespace BedrockLan;
 
 /// <summary>
 /// Optional per-server settings for <see cref="BedrockRelay.AddServer(string, RelayServerOptions?)"/>.
-/// Values are copied when the server is added; <see cref="DisplayName"/>, <see cref="LevelName"/>,
-/// <see cref="TransferHost"/> and <see cref="TransferPort"/> can later be changed on the <see cref="RelayServer"/>.
+/// Values are copied when the server is added; <see cref="DisplayName"/>, <see cref="NamePrefix"/>,
+/// <see cref="LevelName"/>, <see cref="TransferHost"/> and <see cref="TransferPort"/> can later be changed on the
+/// <see cref="RelayServer"/>.
 /// </summary>
 public sealed class RelayServerOptions
 {
@@ -12,6 +13,12 @@ public sealed class RelayServerOptions
 
     /// <summary>Overrides the forwarded server name / MOTD line 1.</summary>
     public string? DisplayName { get; init; }
+
+    /// <summary>
+    /// Text put in front of the advertised name, after formatting codes are stripped (so it may contain control
+    /// characters). For example, the app prefixes favourites with "\0⭐ ".
+    /// </summary>
+    public string? NamePrefix { get; init; }
 
     /// <summary>Overrides the forwarded level name / MOTD line 2.</summary>
     public string? LevelName { get; init; }
