@@ -193,8 +193,8 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
 
     public int Protocol => Status?.Protocol ?? 0;
 
-    /// <summary>True if the server answered within <see cref="BedrockRelayOptions.OfflineAfter"/>.</summary>
-    public bool IsOnline => LastUpdated is { } t && DateTime.UtcNow - t < Relay.Options.OfflineAfter;
+    /// <summary>True if the server answered within <see cref="BedrockRelayOptions.EffectiveOfflineAfter"/>.</summary>
+    public bool IsOnline => LastUpdated is { } t && DateTime.UtcNow - t < Relay.Options.EffectiveOfflineAfter;
 
     /// <summary>Time of the last successful query (UTC).</summary>
     public DateTime? LastUpdated => TicksToTime(Interlocked.Read(ref _lastSuccessTicks));

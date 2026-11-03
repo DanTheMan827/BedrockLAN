@@ -82,11 +82,29 @@ public sealed class BedrockRelayOptions
         set => Interlocked.Exchange(ref _queryTimeoutTicks, Math.Max(TimeSpan.FromMilliseconds(200).Ticks, value.Ticks));
     }
 
-    /// <summary>A server is considered offline when it has not answered for this long.</summary>
+    /// <summary>
+    /// A server is considered offline when it has not answered for this long. It is never shorter than two poll
+    /// intervals plus a query's time (see <see cref="EffectiveOfflineAfter"/>), so a long <see cref="PollInterval"/>
+    /// doesn't make servers look offline between polls.
+    /// </summary>
     public TimeSpan OfflineAfter
     {
         get => TimeSpan.FromTicks(Interlocked.Read(ref _offlineAfterTicks));
         set => Interlocked.Exchange(ref _offlineAfterTicks, Math.Max(TimeSpan.FromSeconds(1).Ticks, value.Ticks));
+    }
+
+    /// <summary>
+    /// The offline threshold actually used: <see cref="OfflineAfter"/>, but at least two missed polls
+    /// (2 × <see cref="PollInterval"/>) plus the longest a query can take (<see cref="QueryTimeout"/> + 3 s for HTTP).
+    /// </summary>
+    public TimeSpan EffectiveOfflineAfter
+    {
+        get
+        {
+            var missedPolls = PollInterval * 2 + QueryTimeout + TimeSpan.FromSeconds(3);
+            var configured = OfflineAfter;
+            return configured > missedPolls ? configured : missedPolls;
+        }
     }
 
     /// <summary>Stop advertising servers that are offline (otherwise they are listed with their last known data).</summary>
