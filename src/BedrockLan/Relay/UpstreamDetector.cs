@@ -8,9 +8,12 @@ namespace BedrockLan;
 internal sealed record DetectionResult(UpstreamKind Kind, ServerStatus Status, HttpSignalingClient? Http, NetherNetLanQueryResult? Lan);
 
 /// <summary>
-/// Works out what kind of Bedrock server lives at a host by querying all transports in parallel:
-/// NetherNet HTTP signaling (<c>GET /v1/join</c> over http and https), NetherNet LAN discovery (UDP 7551)
-/// and a RakNet ping. Preference: HTTP signaling, then NetherNet LAN, then RakNet.
+/// Works out how a Bedrock server can be reached right now by querying all transports in parallel:
+/// NetherNet HTTP signaling (<c>GET /v1/join</c> over http and https, TCP on the server's port), NetherNet LAN
+/// discovery (UDP 7551) and a RakNet ping (UDP on the server's port). Preference: HTTP signaling, then NetherNet
+/// LAN, then RakNet. There's no reliable way to tell from outside which protocol a server "really" speaks: a
+/// NetherNet server whose TCP port is blocked may still answer RakNet pings on its UDP port, so the result is the
+/// best transport that answered, re-checked on every poll for <see cref="UpstreamKind.Auto"/> servers.
 /// </summary>
 internal static class UpstreamDetector
 {

@@ -494,15 +494,25 @@ public sealed class BedrockRelay : IDisposable, IAsyncDisposable
 
         try
         {
-            if (server.Kind is not { } kind)
+            if (server.ConfiguredKind == UpstreamKind.Auto)
             {
+                // Auto: probe every transport on every poll, not just the one that answered first. A server can be
+                // reachable over some transports and not others (for example only its UDP port is open, so NetherNet
+                // HTTP signaling over TCP fails while a RakNet ping on the same port answers), and which ones
+                // answer can change. The best transport that answers right now decides how players are sent there.
                 var result = await UpstreamDetector.DetectAsync(server, timeout, token).ConfigureAwait(false);
                 if (result is null)
                 {
-                    server.SetError("no Bedrock server answered (tried NetherNet HTTP/HTTPS, NetherNet LAN and RakNet)");
+                    server.SetError($"no Bedrock server answered (tried NetherNet HTTP/HTTPS on TCP {server.Port}, " +
+                        $"RakNet on UDP {server.Port} and NetherNet LAN discovery on UDP {DiscoveryPacketCodec.DefaultPort})");
                 }
                 else
                 {
+                    if (server.Kind != result.Kind)
+                    {
+                        detected = result.Kind; // first detection, or the reachable transport changed
+                    }
+
                     server.ApplyDetection(result.Kind, result.Http);
                     if (result.Lan is { } lan)
                     {
@@ -510,10 +520,9 @@ public sealed class BedrockRelay : IDisposable, IAsyncDisposable
                     }
 
                     status = result.Status;
-                    detected = result.Kind;
                 }
             }
-            else
+            else if (server.Kind is { } kind)
             {
                 status = await QueryAsync(server, kind, timeout, token).ConfigureAwait(false);
                 if (status is null && server.LastError is null)
@@ -541,7 +550,7 @@ public sealed class BedrockRelay : IDisposable, IAsyncDisposable
             var previous = server.Update(status);
             if (detected is { } detectedKind)
             {
-                _log.Info($"[{server.Address}] detected {UpstreamDetector.Describe(detectedKind, server)}.");
+                _log.Info($"[{server.Address}] reachable as {UpstreamDetector.Describe(detectedKind, server)}.");
                 var args = new KindDetectedEventArgs(server, detectedKind);
                 _events.Post(() =>
                 {
@@ -562,8 +571,8 @@ public sealed class BedrockRelay : IDisposable, IAsyncDisposable
         }
         else if (server.ConfiguredKind == UpstreamKind.Auto && server.Kind is not null && !server.IsOnline)
         {
-            server.ResetDetection(); // offline: probe afresh next time, in case it came back as something else
-            _log.Debug($"[{server.Address}] offline; will re-detect its type.");
+            server.ResetDetection(); // offline: forget the type until something answers again
+            _log.Debug($"[{server.Address}] offline; its type will be detected again when it answers.");
         }
 
         if (server.ConsumeOnlineChange(out var online))

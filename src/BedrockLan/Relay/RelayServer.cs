@@ -1,7 +1,7 @@
-using System.Net;
 using BedrockLan.Internal;
 using BedrockLan.NetherNet;
 using BedrockLan.RakNet;
+using System.Net;
 
 namespace BedrockLan;
 
@@ -66,19 +66,34 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
     // ---- Identity ---------------------------------------------------------------------------
 
     /// <summary>The relay this server belongs to.</summary>
-    public BedrockRelay Relay { get; }
+    public BedrockRelay Relay
+    {
+        get;
+    }
 
     /// <summary>The address as passed to <see cref="BedrockRelay.AddServer(string, RelayServerOptions?)"/>.</summary>
-    public string Address { get; }
+    public string Address
+    {
+        get;
+    }
 
     /// <summary>Upstream host name or IP.</summary>
-    public string Host { get; }
+    public string Host
+    {
+        get;
+    }
 
     /// <summary>Upstream port (19132 unless given; 7551 for an explicit NetherNet LAN host).</summary>
-    public int Port { get; }
+    public int Port
+    {
+        get;
+    }
 
     /// <summary>The kind requested when adding (usually <see cref="UpstreamKind.Auto"/>).</summary>
-    public UpstreamKind ConfiguredKind { get; }
+    public UpstreamKind ConfiguredKind
+    {
+        get;
+    }
 
     /// <summary>The kind in use: configured, or detected for Auto (null until detected).</summary>
     public UpstreamKind? Kind
@@ -96,10 +111,16 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
     }
 
     /// <summary>When the server was added (UTC).</summary>
-    public DateTime AddedAt { get; }
+    public DateTime AddedAt
+    {
+        get;
+    }
 
     /// <summary>Network id this server is advertised under on NetherNet LAN discovery.</summary>
-    public ulong NetherNetId { get; }
+    public ulong NetherNetId
+    {
+        get;
+    }
 
     // ---- Live overrides -------------------------------------------------------------------------
 
@@ -233,9 +254,15 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
 
     // ---- Internals used by the relay ------------------------------------------------------------
 
-    internal RelayServerOptions Options { get; }
+    internal RelayServerOptions Options
+    {
+        get;
+    }
 
-    internal bool PortSpecified { get; }
+    internal bool PortSpecified
+    {
+        get;
+    }
 
     internal CancellationToken Lifetime => _lifetime.Token;
 
@@ -250,7 +277,10 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
     internal HttpSignalingClient? HttpClient => Volatile.Read(ref _httpClient);
 
     /// <summary>NetherNet advertisement handler; guarded by the relay's lock.</summary>
-    internal INetherNetSignalHandler? SignalHandler { get; set; }
+    internal INetherNetSignalHandler? SignalHandler
+    {
+        get; set;
+    }
 
     internal (ulong NetworkId, IPEndPoint EndPoint)? LanUpstream
     {
