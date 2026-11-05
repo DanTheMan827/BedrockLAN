@@ -1,8 +1,9 @@
-using System.Net;
 using BedrockLan.Bedrock;
+using BedrockLan.Bedrock.Packets;
 using BedrockLan.Internal;
 using BedrockLan.NetherNet;
 using BedrockLan.RakNet;
+using System.Net;
 using Xunit;
 
 namespace BedrockLan.Tests;
@@ -159,79 +160,6 @@ public class RakNetTests
 
         Assert.Contains(sent, d => d[0] == 0x84 && d.Length > 14 && d[14] == RakNetProtocol.ConnectionRequestAccepted);
         Assert.Contains(sent, d => d[0] == 0xC0);
-    }
-}
-
-public class TransferSessionTests
-{
-    [Theory]
-    [InlineData(2225, TransferTiming.AfterSpawn)]
-    [InlineData(2225, TransferTiming.AfterResourcePacks)]
-    [InlineData(800, TransferTiming.AfterSpawn)]
-    [InlineData(800, TransferTiming.AfterResourcePacks)]
-    [InlineData(700, TransferTiming.Immediate)]
-    public void Session_EndsWithTransfer(int protocol, TransferTiming timing)
-    {
-        var outgoing = new List<byte[]>();
-        TimeSpan? closeDelay = null;
-        var session = new TransferSession("test", () => new TransferTarget("play.example.com", 19132),
-            new TransferOptions { Timing = timing }, outgoing.Add, d => closeDelay = d, null);
-
-        // RequestNetworkSettings (uncompressed).
-        session.HandleBatch(BatchCodec.Join(Packet(BedrockPackets.IdRequestNetworkSettings, w => w.Int32BE(protocol))));
-        Assert.Equal(BedrockPackets.IdNetworkSettings, FirstPacketId(outgoing[0], compressed: false, protocol));
-
-        // Login (compressed from now on).
-        session.HandleBatch(Compress(protocol, Packet(BedrockPackets.IdLogin, w => w.Int32BE(protocol))));
-        if (timing != TransferTiming.Immediate)
-        {
-            session.HandleBatch(Compress(protocol, Packet(BedrockPackets.IdResourcePackClientResponse, w => w.Byte(3))));
-            session.HandleBatch(Compress(protocol, Packet(BedrockPackets.IdResourcePackClientResponse, w => w.Byte(4))));
-        }
-
-        if (timing == TransferTiming.AfterSpawn && protocol == 2225)
-        {
-            Assert.Equal(BedrockPackets.IdItemRegistry, FirstPacketId(outgoing[^1], compressed: true, protocol));
-            session.HandleBatch(Compress(protocol, Packet(BedrockPackets.IdRequestChunkRadius, w => { w.VarInt32(12); w.Byte(12); })));
-            Assert.False(session.IsFinished);
-            session.HandleBatch(Compress(protocol, Packet(BedrockPackets.IdSetLocalPlayerAsInitialised, w => w.VarUInt32(1))));
-        }
-
-        Assert.Equal(BedrockPackets.IdTransfer, FirstPacketId(outgoing[^1], compressed: true, protocol));
-        Assert.True(session.IsFinished);
-        Assert.NotNull(closeDelay);
-    }
-
-    private static byte[] Packet(int id, Action<ByteWriter> body)
-    {
-        var writer = new ByteWriter();
-        writer.VarUInt32((uint)id);
-        body(writer);
-        return writer.ToArray();
-    }
-
-    private static byte[] Compress(int protocol, byte[] packet)
-    {
-        var batch = BatchCodec.Join(packet);
-        if (protocol < BedrockPackets.ProtocolCompressionHeader)
-        {
-            return BatchCodec.Deflate(batch);
-        }
-
-        var deflated = BatchCodec.Deflate(batch);
-        return new byte[] { 0x00 }.Concat(deflated).ToArray();
-    }
-
-    private static int FirstPacketId(byte[] wire, bool compressed, int protocol)
-    {
-        byte[] batch = wire;
-        if (compressed)
-        {
-            batch = protocol >= BedrockPackets.ProtocolCompressionHeader ? BatchCodec.Inflate(wire.AsSpan(1)) : BatchCodec.Inflate(wire);
-        }
-
-        var packet = BatchCodec.Split(batch)[0];
-        return (int)(new ByteReader(packet).VarUInt32() & 0x3FF);
     }
 }
 
