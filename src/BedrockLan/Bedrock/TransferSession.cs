@@ -1,3 +1,4 @@
+using BedrockLan.Bedrock.Packets;
 using BedrockLan.Internal;
 
 namespace BedrockLan.Bedrock;
@@ -119,49 +120,49 @@ public sealed class TransferSession
 
         switch (_stage)
         {
-            case Stage.AwaitNetworkSettingsRequest when id == BedrockPackets.IdRequestNetworkSettings:
+            case Stage.AwaitNetworkSettingsRequest when id == (int)PacketId.RequestNetworkSettingsPacket:
                 _protocol = reader.Int32BE();
                 _log.Debug($"{_peer}: client protocol {_protocol}.");
-                Send(BedrockPackets.NetworkSettings(256)); // sent uncompressed
+                Send(new NetworkSettings { CompressionThreshold = 256 }); // sent uncompressed
                 _compressed = true;
                 _stage = Stage.AwaitLogin;
                 break;
 
-            case Stage.AwaitLogin when id == BedrockPackets.IdLogin:
-            {
-                var loginProtocol = reader.Int32BE();
-                if (_protocol == 0)
+            case Stage.AwaitLogin when id == (int)PacketId.LoginPacket:
                 {
-                    _protocol = loginProtocol;
+                    var loginProtocol = reader.Int32BE();
+                    if (_protocol == 0)
+                    {
+                        _protocol = loginProtocol;
+                    }
+
+                    Send(new PlayStatus { Status = PlayStatus.LoginSuccess });
+                    if (_options.Timing != TransferTiming.Immediate && BedrockPackets.SupportsResourcePackStage(_protocol))
+                    {
+                        Send(new ResourcePacksInfo { Protocol = _protocol });
+                        _stage = Stage.AwaitPacksResponse;
+                    }
+                    else
+                    {
+                        SendTransfer();
+                    }
+
+                    break;
                 }
 
-                Send(BedrockPackets.PlayStatus(BedrockPackets.PlayStatusLoginSuccess));
-                if (_options.Timing != TransferTiming.Immediate && BedrockPackets.SupportsResourcePackStage(_protocol))
-                {
-                    Send(BedrockPackets.ResourcePacksInfo(_protocol));
-                    _stage = Stage.AwaitPacksResponse;
-                }
-                else
-                {
-                    SendTransfer();
-                }
-
-                break;
-            }
-
-            case Stage.AwaitPacksResponse when id == BedrockPackets.IdResourcePackClientResponse:
-                Send(BedrockPackets.ResourcePackStack(_protocol));
+            case Stage.AwaitPacksResponse when id == (int)PacketId.ResourcePackClientResponsePacket:
+                Send(new ResourcePackStack { Protocol = _protocol });
                 _stage = Stage.AwaitStackResponse;
                 break;
 
-            case Stage.AwaitStackResponse when id == BedrockPackets.IdResourcePackClientResponse:
+            case Stage.AwaitStackResponse when id == (int)PacketId.ResourcePackClientResponsePacket:
                 if (_options.Timing == TransferTiming.AfterSpawn && BedrockPackets.SupportsSpawnStage(_protocol))
                 {
                     _log.Debug($"{_peer}: starting temporary game.");
-                    Send(BedrockPackets.JigsawStructureData());
-                    Send(BedrockPackets.VoxelShapes());
-                    Send(BedrockPackets.StartGame(_options.LoadingWorldName));
-                    Send(BedrockPackets.ItemRegistry());
+                    Send(new JigsawStructureData());
+                    Send(new VoxelShapes());
+                    Send(new StartGame() { WorldName = _options.LoadingWorldName });
+                    Send(new ItemRegistry());
                     _stage = Stage.AwaitChunkRadiusRequest;
                 }
                 else
@@ -176,18 +177,18 @@ public sealed class TransferSession
 
                 break;
 
-            case Stage.AwaitChunkRadiusRequest when id == BedrockPackets.IdRequestChunkRadius:
-            {
-                var radius = Math.Clamp(reader.VarInt32(), 1, 8);
-                Send(BedrockPackets.ChunkRadiusUpdated(radius));
-                Send(BedrockPackets.PlayStatus(BedrockPackets.PlayStatusPlayerSpawn));
-                Send(BedrockPackets.CreativeContent());
-                _stage = Stage.AwaitSpawned;
-                _ = TransferIfSpawnNotConfirmedAsync();
-                break;
-            }
+            case Stage.AwaitChunkRadiusRequest when id == (int)PacketId.RequestChunkRadiusPacket:
+                {
+                    var radius = Math.Clamp(reader.VarInt32(), 1, 8);
+                    Send(new ChunkRadiusUpdated { Radius = radius });
+                    Send(new PlayStatus { Status = PlayStatus.PlayerSpawn });
+                    Send(new CreativeContent());
+                    _stage = Stage.AwaitSpawned;
+                    _ = TransferIfSpawnNotConfirmedAsync();
+                    break;
+                }
 
-            case Stage.AwaitSpawned when id == BedrockPackets.IdSetLocalPlayerAsInitialised:
+            case Stage.AwaitSpawned when id == (int)PacketId.SetLocalPlayerAsInitializedPacket:
                 _log.Debug($"{_peer}: client spawned.");
                 SendTransfer();
                 break;
@@ -237,7 +238,7 @@ public sealed class TransferSession
         if (target is { } t)
         {
             _log.Info($"{_peer}: transferring to {t} (protocol {_protocol}).");
-            Send(BedrockPackets.Transfer(_protocol, t.Host, t.Port));
+            Send(new Transfer { Protocol = _protocol, Address = t.Host, Port = t.Port });
             try
             {
                 _transferred?.Invoke(t, _protocol);
@@ -250,7 +251,7 @@ public sealed class TransferSession
         else
         {
             _log.Warn($"{_peer}: destination unknown/offline; disconnecting.");
-            Send(BedrockPackets.Disconnect(_protocol, _options.OfflineMessage));
+            Send(new Disconnect() { Message = _options.OfflineMessage, Protocol = _protocol });
         }
 
         _stage = Stage.Done;
@@ -278,5 +279,10 @@ public sealed class TransferSession
         }
 
         _sendBatch(wire);
+    }
+
+    private void Send(Packet packet)
+    {
+        Send(packet.Build());
     }
 }
