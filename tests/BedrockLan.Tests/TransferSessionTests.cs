@@ -43,6 +43,146 @@ public class TransferSessionTests
         Assert.NotNull(client.CloseDelay);
     }
 
+    /// <summary>
+    /// The full conversation for every documented protocol (plus newer stand-ins) and timing: the expected packets in order, each one
+    /// read back with the docs-derived readers for that protocol.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(BedrockDocs.ProtocolsAndTimings), MemberType = typeof(BedrockDocs))]
+    public void Protocol_FollowsTheHandshake(int protocol, TransferTiming timing)
+    {
+        var spawns = timing == TransferTiming.AfterSpawn && protocol >= 2207; // 1.26.60+ clients spawn first
+        var packs = timing != TransferTiming.Immediate;
+
+        var client = new FakeClient(protocol, timing);
+        client.RequestNetworkSettings();
+        client.Login();
+        if (packs)
+        {
+            client.ResourcePackResponse(3);
+            client.ResourcePackResponse(4);
+        }
+
+        if (spawns)
+        {
+            Assert.False(client.Session.IsFinished);
+            client.RequestChunkRadius(6);
+            client.Initialised();
+        }
+
+        var expected = new List<PacketId> { PacketId.NetworkSettingsPacket, PacketId.PlayStatusPacket };
+        if (packs)
+        {
+            expected.AddRange(new[] { PacketId.ResourcePacksInfoPacket, PacketId.ResourcePackStackPacket });
+        }
+
+        if (spawns)
+        {
+            expected.AddRange(new[]
+            {
+                PacketId.JigsawStructureDataPacket, PacketId.VoxelShapesPacket, PacketId.StartGamePacket,
+                PacketId.ItemRegistryPacket, PacketId.ChunkRadiusUpdatedPacket, PacketId.PlayStatusPacket,
+                PacketId.CreativeContentPacket,
+            });
+        }
+
+        expected.Add(PacketId.TransferPacket);
+        Assert.Equal(expected.Select(id => (int)id), client.AllIds());
+        Assert.True(client.Session.IsFinished);
+        Assert.Equal(protocol, client.Session.ClientProtocol);
+
+        foreach (var packet in client.DecodedPackets())
+        {
+            BedrockDocs.ReadAny(packet, protocol);
+        }
+
+        Assert.Equal((Target.Host, Target.Port), BedrockDocs.ReadTransfer(client.LastPackets()[^1], protocol));
+    }
+
+    [Theory]
+    [InlineData(2193)] // 1.26.50: accepts a transfer before spawning
+    public void AfterSpawn_BeforeTheSpawnRange_TransfersAfterResourcePacks(int protocol)
+    {
+        var client = new FakeClient(protocol, TransferTiming.AfterSpawn);
+        client.RequestNetworkSettings();
+        client.Login();
+        client.ResourcePackResponse(3);
+        client.ResourcePackResponse(4);
+
+        Assert.DoesNotContain((int)PacketId.StartGamePacket, client.AllIds());
+        Assert.Equal((int)PacketId.TransferPacket, client.LastIds()[^1]);
+        Assert.True(client.Session.IsFinished);
+    }
+
+    /// <summary>A protocol newer than the docs gets exactly the newest known protocol's conversation.</summary>
+    [Theory]
+    [MemberData(nameof(BedrockDocs.NewerThanKnown), MemberType = typeof(BedrockDocs))]
+    public void NewerProtocol_SendsTheSameBytesAsTheNewestKnown(int protocol)
+    {
+        var newer = Run(protocol);
+        var known = Run(BedrockDocs.NewestKnown);
+
+        Assert.Equal(known.Count, newer.Count);
+        for (var i = 0; i < known.Count; i++)
+        {
+            if ((PacketId)new ByteReader(known[i]).VarUInt32() == PacketId.StartGamePacket)
+            {
+                Assert.Equal(known[i].Length, newer[i].Length); // differs only in its random correlation id
+            }
+            else
+            {
+                Assert.Equal(known[i], newer[i]);
+            }
+        }
+
+        static List<byte[]> Run(int protocol)
+        {
+            var client = new FakeClient(protocol, TransferTiming.AfterSpawn);
+            client.RequestNetworkSettings();
+            client.Login();
+            client.ResourcePackResponse(3);
+            client.ResourcePackResponse(4);
+            client.RequestChunkRadius(6);
+            client.Initialised();
+            Assert.True(client.Session.IsFinished);
+            return client.DecodedPackets();
+        }
+    }
+
+    [Fact]
+    public void ResourcePacks_CancelIsTreatedLikeHaveAllPacks()
+    {
+        var client = new FakeClient(2225, TransferTiming.AfterResourcePacks);
+        client.RequestNetworkSettings();
+        client.Login();
+        client.ResourcePackResponse(1); // cancel: packs aren't required
+        Assert.Equal((int)PacketId.ResourcePackStackPacket, client.LastIds()[^1]);
+
+        client.ResourcePackResponse(4);
+        Assert.Equal((int)PacketId.TransferPacket, client.LastIds()[^1]);
+    }
+
+    [Fact]
+    public void ResourcePacks_OtherResponsesDoNotAdvance()
+    {
+        var client = new FakeClient(2225, TransferTiming.AfterResourcePacks);
+        client.RequestNetworkSettings();
+        client.Login();
+        var sent = client.Packets.Count;
+
+        client.ResourcePackResponse(2); // downloading: nothing was offered, so nothing to wait for
+        client.ResourcePackResponse(4); // stack finished before a stack was sent
+        Assert.Equal(sent, client.Packets.Count);
+
+        client.ResourcePackResponse(3);
+        client.ResourcePackResponse(3); // a repeated "have all packs" doesn't count as the stack response
+        Assert.Equal(sent + 1, client.Packets.Count);
+        Assert.False(client.Session.IsFinished);
+
+        client.ResourcePackResponse(4);
+        Assert.True(client.Session.IsFinished);
+    }
+
     [Fact]
     public void AfterSpawn_SendsPacketsInOrder()
     {

@@ -20,7 +20,8 @@ public enum TransferTiming
     /// <summary>
     /// Start a minimal empty game (StartGame → chunk radius → PlayStatus(PlayerSpawn)) and transfer once the
     /// client reports it has spawned. Required by 26.60 clients, which ignore a Transfer received during login
-    /// (client error "Terracotta", InitialConnection-14). Only protocol 2225 is supported; others fall back to
+    /// (client error "Terracotta", InitialConnection-14). Runs for protocol 2207 and newer (layouts checked
+    /// against Mojang's protocol docs up to 2250, newer ones assumed unchanged); older clients fall back to
     /// <see cref="AfterResourcePacks"/>.
     /// </summary>
     AfterSpawn,

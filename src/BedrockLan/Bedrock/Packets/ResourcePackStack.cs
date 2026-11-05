@@ -24,7 +24,7 @@ namespace BedrockLan.Bedrock.Packets
             w.String("*");  // base game version
             w.Int32LE(0);   // experiments
             w.Bool(false);  // experiments previously toggled
-            w.Bool(false);  // has editor packs (671+)
+            w.Byte(0);      // 671+: include editor packs (bool) = false; 2239+: editor pack type (uint8) = None
         }
     }
 }

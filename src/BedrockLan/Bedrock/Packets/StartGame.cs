@@ -2,12 +2,26 @@
 
 namespace BedrockLan.Bedrock.Packets
 {
-    /// <summary>A minimal StartGame for protocol 2225: empty world, player floating at y=100 in adventure mode.</summary>
+    /// <summary>A minimal StartGame: empty world, player floating at y=100 in adventure mode.</summary>
+    /// <remarks>
+    /// Layout per Mojang's bedrock-protocol-docs, checked for protocols 2168-2250; newer protocols are assumed
+    /// unchanged from 2250. The only wire change in that
+    /// range is the editor level migration version byte added in 2216; later changes (2235: managed chat) sit
+    /// inside the server join info, which is sent absent. See <see cref="BedrockPackets.SupportsSpawnStage"/>.
+    /// </remarks>
     internal sealed class StartGame : Packet
     {
         /// <summary>Entity runtime/unique id given to the (never really spawned) player.</summary>
         public const long PlayerEntityId = 1;
+        /// <summary>First protocol with the editor level migration version in the level settings.</summary>
+        internal const int ProtocolEditorLevelMigration = 2216;
+
         public required string WorldName
+        {
+            get; init;
+        }
+
+        public required int Protocol
         {
             get; init;
         }
@@ -40,7 +54,11 @@ namespace BedrockLan.Bedrock.Packets
             w.VarInt32(0);                // editor world type
             w.Bool(false);                // created in editor
             w.Bool(false);                // exported from editor
-            w.Byte(0);                    // editor level migration version
+            if (Protocol >= ProtocolEditorLevelMigration)
+            {
+                w.Byte(0);                // editor level migration version: legacy
+            }
+
             w.VarInt32(0);                // day cycle lock time
             w.VarUInt32(0);               // education edition offer
             w.Bool(false);                // education features

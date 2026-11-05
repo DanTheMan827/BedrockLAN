@@ -3,6 +3,10 @@
 namespace BedrockLan.Bedrock.Packets
 {
     /// <summary>Sends the client on to another server.</summary>
+    /// <remarks>
+    /// Layout per Mojang's bedrock-protocol-docs: address, port, then (729+) reload world, (2168+) optional
+    /// gatherings configuration and (2250+) optional transfer UI settings. Optionals are a presence bool.
+    /// </remarks>
     internal sealed class Transfer : Packet
     {
         public required int Protocol
@@ -33,7 +37,12 @@ namespace BedrockLan.Bedrock.Packets
 
             if (Protocol >= 2168)
             {
-                w.Bool(false); // optional gathering join info: absent
+                w.Bool(false); // optional gatherings configuration: absent
+            }
+
+            if (Protocol >= 2250)
+            {
+                w.Bool(false); // optional server transfer settings (TransferPlayerUIOptions): absent
             }
         }
     }

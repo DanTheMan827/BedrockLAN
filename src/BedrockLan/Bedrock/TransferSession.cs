@@ -22,6 +22,10 @@ public sealed class TransferSession
         Done,
     }
 
+    private const byte ResourcePackResponseCancel = 1;
+    private const byte ResourcePackResponseDownloadingFinished = 3;
+    private const byte ResourcePackResponseStackFinished = 4;
+
     private readonly object _sync = new();
     private readonly string _peer;
     private readonly Func<TransferTarget?> _target;
@@ -150,32 +154,49 @@ public sealed class TransferSession
                     break;
                 }
 
+            // ResourcePackClientResponse starts with its response type (int8): 1 Cancel, 2 Downloading,
+            // 3 DownloadingFinished, 4 ResourcePackStackFinished. No packs are offered, so a client answers 3 (or
+            // 1 when it declines packs, which aren't required) and then 4 once it has applied the stack.
             case Stage.AwaitPacksResponse when id == (int)PacketId.ResourcePackClientResponsePacket:
-                Send(new ResourcePackStack { Protocol = _protocol });
-                _stage = Stage.AwaitStackResponse;
-                break;
-
-            case Stage.AwaitStackResponse when id == (int)PacketId.ResourcePackClientResponsePacket:
-                if (_options.Timing == TransferTiming.AfterSpawn && BedrockPackets.SupportsSpawnStage(_protocol))
                 {
-                    _log.Debug($"{_peer}: starting temporary game.");
-                    Send(new JigsawStructureData());
-                    Send(new VoxelShapes());
-                    Send(new StartGame() { WorldName = _options.LoadingWorldName });
-                    Send(new ItemRegistry());
-                    _stage = Stage.AwaitChunkRadiusRequest;
-                }
-                else
-                {
-                    if (_options.Timing == TransferTiming.AfterSpawn)
+                    var response = reader.Byte();
+                    if (response is ResourcePackResponseCancel or ResourcePackResponseDownloadingFinished)
                     {
-                        _log.Debug($"{_peer}: no StartGame layout for protocol {_protocol}; transferring before spawn.");
+                        Send(new ResourcePackStack { Protocol = _protocol });
+                        _stage = Stage.AwaitStackResponse;
                     }
 
-                    SendTransfer();
+                    break;
                 }
 
-                break;
+            case Stage.AwaitStackResponse when id == (int)PacketId.ResourcePackClientResponsePacket:
+                {
+                    if (reader.Byte() != ResourcePackResponseStackFinished)
+                    {
+                        break;
+                    }
+
+                    if (_options.Timing == TransferTiming.AfterSpawn && BedrockPackets.SupportsSpawnStage(_protocol))
+                    {
+                        _log.Debug($"{_peer}: starting temporary game.");
+                        Send(new JigsawStructureData());
+                        Send(new VoxelShapes());
+                        Send(new StartGame { WorldName = _options.LoadingWorldName, Protocol = _protocol });
+                        Send(new ItemRegistry());
+                        _stage = Stage.AwaitChunkRadiusRequest;
+                    }
+                    else
+                    {
+                        if (_options.Timing == TransferTiming.AfterSpawn)
+                        {
+                            _log.Debug($"{_peer}: protocol {_protocol} doesn't need the spawn stage; transferring before spawn.");
+                        }
+
+                        SendTransfer();
+                    }
+
+                    break;
+                }
 
             case Stage.AwaitChunkRadiusRequest when id == (int)PacketId.RequestChunkRadiusPacket:
                 {

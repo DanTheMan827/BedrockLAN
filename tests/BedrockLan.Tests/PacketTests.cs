@@ -58,7 +58,8 @@ public class PacketTests
     [Theory]
     [InlineData(700, 0)]
     [InlineData(729, 1)]  // + reload world
-    [InlineData(2168, 2)] // + gathering join info
+    [InlineData(2168, 2)] // + gatherings configuration
+    [InlineData(2250, 3)] // + server transfer settings
     public void Transfer_EncodesAddressPortAndVersionFlags(int protocol, int trailingFlags)
     {
         var bytes = new Transfer { Protocol = protocol, Address = "play.example.com", Port = 19132 }.Build();
@@ -143,7 +144,7 @@ public class PacketTests
     [Fact]
     public void StartGame_StartsWithPlayerAndEndsWithEmptyIds()
     {
-        var bytes = new StartGame { WorldName = "Joining server" }.Build();
+        var bytes = new StartGame { WorldName = "Joining server", Protocol = 2225 }.Build();
 
         var r = new ByteReader(bytes);
         Assert.Equal((uint)PacketId.StartGamePacket, r.VarUInt32());
@@ -159,12 +160,129 @@ public class PacketTests
     public void StartGame_CarriesWorldName()
     {
         var name = "Joining server";
-        var withName = new StartGame { WorldName = name }.Build();
-        var empty = new StartGame { WorldName = "" }.Build();
+        var withName = new StartGame { WorldName = name, Protocol = 2225 }.Build();
+        var empty = new StartGame { WorldName = "", Protocol = 2225 }.Build();
 
         var encoded = new byte[] { (byte)name.Length }.Concat(Encoding.UTF8.GetBytes(name)).ToArray();
         Assert.True(withName.AsSpan().IndexOf(encoded.AsSpan()) > 0, "world name not found");
         Assert.Equal(empty.Length + name.Length, withName.Length);
+    }
+
+    [Fact]
+    public void StartGame_AddsEditorLevelMigrationVersionFrom2216()
+    {
+        var before = new StartGame { WorldName = "w", Protocol = 2211 }.Build();
+        var after = new StartGame { WorldName = "w", Protocol = 2216 }.Build();
+        Assert.Equal(before.Length + 1, after.Length);
+    }
+
+    // ---- Every documented protocol (2168-2250), read back with readers written from Mojang's docs ----
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void NetworkSettings_MatchesDocs(int protocol)
+    {
+        _ = protocol; // same layout in every documented protocol
+        Assert.Equal(256, BedrockDocs.ReadNetworkSettings(new NetworkSettings { CompressionThreshold = 256 }.Build()));
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void PlayStatus_MatchesDocs(int protocol)
+    {
+        _ = protocol;
+        Assert.Equal(PlayStatus.LoginSuccess, BedrockDocs.ReadPlayStatus(new PlayStatus { Status = PlayStatus.LoginSuccess }.Build()));
+        Assert.Equal(PlayStatus.PlayerSpawn, BedrockDocs.ReadPlayStatus(new PlayStatus { Status = PlayStatus.PlayerSpawn }.Build()));
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void ResourcePacksInfo_MatchesDocs(int protocol)
+    {
+        BedrockDocs.ReadResourcePacksInfo(new ResourcePacksInfo { Protocol = protocol }.Build(), protocol);
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void ResourcePackStack_MatchesDocs(int protocol)
+    {
+        BedrockDocs.ReadResourcePackStack(new ResourcePackStack { Protocol = protocol }.Build(), protocol);
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void Transfer_MatchesDocs(int protocol)
+    {
+        var bytes = new Transfer { Protocol = protocol, Address = "play.example.com", Port = 19132 }.Build();
+        Assert.Equal(("play.example.com", (ushort)19132), BedrockDocs.ReadTransfer(bytes, protocol));
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void Disconnect_MatchesDocs(int protocol)
+    {
+        Assert.Equal("Server offline", BedrockDocs.ReadDisconnect(new Disconnect { Protocol = protocol, Message = "Server offline" }.Build()));
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void StartGame_MatchesDocs(int protocol)
+    {
+        var bytes = new StartGame { WorldName = "Joining server", Protocol = protocol }.Build();
+        Assert.Equal("Joining server", BedrockDocs.ReadStartGame(bytes, protocol));
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void JigsawStructureData_MatchesDocs(int protocol)
+    {
+        _ = protocol;
+        BedrockDocs.ReadJigsawStructureData(new JigsawStructureData().Build());
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void VoxelShapes_MatchesDocs(int protocol)
+    {
+        _ = protocol;
+        BedrockDocs.ReadVoxelShapes(new VoxelShapes().Build());
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void ItemRegistry_MatchesDocs(int protocol)
+    {
+        _ = protocol;
+        BedrockDocs.ReadItemRegistry(new ItemRegistry().Build());
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void ChunkRadiusUpdated_MatchesDocs(int protocol)
+    {
+        _ = protocol;
+        Assert.Equal(6, BedrockDocs.ReadChunkRadiusUpdated(new ChunkRadiusUpdated { Radius = 6 }.Build()));
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
+    public void CreativeContent_MatchesDocs(int protocol)
+    {
+        _ = protocol;
+        BedrockDocs.ReadCreativeContent(new CreativeContent().Build());
+    }
+
+    [Theory]
+    [MemberData(nameof(BedrockDocs.NewerThanKnown), MemberType = typeof(BedrockDocs))]
+    public void NewerProtocol_EncodesLikeTheNewestKnown(int protocol)
+    {
+        var known = BedrockDocs.NewestKnown;
+        Assert.Equal(new ResourcePacksInfo { Protocol = known }.Build(), new ResourcePacksInfo { Protocol = protocol }.Build());
+        Assert.Equal(new ResourcePackStack { Protocol = known }.Build(), new ResourcePackStack { Protocol = protocol }.Build());
+        Assert.Equal(new Transfer { Protocol = known, Address = "a", Port = 1 }.Build(), new Transfer { Protocol = protocol, Address = "a", Port = 1 }.Build());
+        Assert.Equal(new Disconnect { Protocol = known, Message = "m" }.Build(), new Disconnect { Protocol = protocol, Message = "m" }.Build());
+        Assert.Equal(new StartGame { Protocol = known, WorldName = "w" }.Build().Length, new StartGame { Protocol = protocol, WorldName = "w" }.Build().Length);
+        Assert.Equal("w", BedrockDocs.ReadStartGame(new StartGame { Protocol = protocol, WorldName = "w" }.Build(), protocol));
     }
 
     [Fact]
