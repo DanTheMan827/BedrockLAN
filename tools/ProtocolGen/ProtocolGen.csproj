@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Generates the protocol config from the C# definitions. BedrockLan.csproj builds and runs this before it compiles,
+    so it must not reference the library: it compiles the definitions from source, plus the few library files they
+    need (linked, so they can't drift).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\BedrockLan.Protocol.Definitions\**\*.cs" Link="Definitions\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\BedrockLan\Bedrock\Packets\PacketId.cs" Link="Shared\PacketId.cs" />
+    <Compile Include="..\..\src\BedrockLan\TransferTiming.cs" Link="Shared\TransferTiming.cs" />
+    <Compile Include="..\..\src\BedrockLan\ProtocolFormat.cs" Link="Shared\ProtocolFormat.cs" />
+  </ItemGroup>
+
+</Project>

@@ -19,4 +19,10 @@
     <ProjectReference Include="..\..\src\BedrockLan\BedrockLan.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The protocol definitions, compiled from source (they're a source folder, not a project; tools/ProtocolGen
+         compiles them too). Here they use the library's own PacketId / TransferTiming. -->
+    <Compile Include="..\..\src\BedrockLan.Protocol.Definitions\**\*.cs" Link="Definitions\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

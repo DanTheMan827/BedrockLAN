@@ -6,27 +6,6 @@ public readonly record struct TransferTarget(string Host, ushort Port)
     public override string ToString() => $"{Host}:{Port}";
 }
 
-public enum TransferTiming
-{
-    /// <summary>Send Transfer right after PlayStatus(LoginSuccess).</summary>
-    Immediate,
-
-    /// <summary>
-    /// Complete the (empty) resource pack negotiation first, then send Transfer. Falls back to
-    /// <see cref="Immediate"/> for protocols older than 729 (1.21.30).
-    /// </summary>
-    AfterResourcePacks,
-
-    /// <summary>
-    /// Start a minimal empty game (StartGame → chunk radius → PlayStatus(PlayerSpawn)) and transfer once the
-    /// client reports it has spawned. Required by 26.60 clients, which ignore a Transfer received during login
-    /// (client error "Terracotta", InitialConnection-14). Runs for protocol 2207 and newer (layouts checked
-    /// against Mojang's protocol docs up to 2250, newer ones assumed unchanged); older clients fall back to
-    /// <see cref="AfterResourcePacks"/>.
-    /// </summary>
-    AfterSpawn,
-}
-
 /// <summary>
 /// How clients are handed a Transfer packet. Thread-safe: every property may be read and changed from any
 /// thread at any time; changes apply to the next connection step that reads them.
@@ -38,6 +17,17 @@ public sealed class TransferOptions
     private long _spawnTimeoutTicks = TimeSpan.FromSeconds(5).Ticks;
     private string _loadingWorldName = "Joining server...";
     private string _offlineMessage = "That server is offline right now.";
+    private ProtocolConfig _protocol = ProtocolConfig.Default;
+
+    /// <summary>
+    /// The packets and the conversation to follow (built-in default unless replaced, e.g. with a newer config
+    /// downloaded at run time). New connections use the config set at the time they start.
+    /// </summary>
+    public ProtocolConfig Protocol
+    {
+        get => Volatile.Read(ref _protocol);
+        set => Volatile.Write(ref _protocol, value ?? throw new ArgumentNullException(nameof(value)));
+    }
 
     public TransferTiming Timing
     {

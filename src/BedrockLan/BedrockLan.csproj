@@ -14,6 +14,53 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The built-in protocol config (ProtocolConfig.Default), generated below. -->
+    <EmbeddedResource Include="Protocol\default-protocol.jsonc" LogicalName="BedrockLan.default-protocol.jsonc" />
+  </ItemGroup>
+
+  <!--
+    Protocol\default-protocol.jsonc is generated from the C# definitions in ..\BedrockLan.Protocol.Definitions by
+    tools/ProtocolGen, which is built and run here, before compiling, whenever a definition (or the file) changed.
+    The file is committed and embedded from there, so a build without the tool (the Docker image only copies src/)
+    embeds the committed copy. -p:GenerateProtocolConfig=false skips generation.
+  -->
+  <PropertyGroup>
+    <GenerateProtocolConfig Condition="'$(GenerateProtocolConfig)' == ''">true</GenerateProtocolConfig>
+    <ProtocolGenProject>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', '..', 'tools', 'ProtocolGen', 'ProtocolGen.csproj'))</ProtocolGenProject>
+    <ProtocolConfigFile>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'Protocol', 'default-protocol.jsonc'))</ProtocolConfigFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(GenerateProtocolConfig)' == 'true' and Exists('$(ProtocolGenProject)')">
+    <ProtocolGenInput Include="../BedrockLan.Protocol.Definitions/**/*.cs" />
+    <ProtocolGenInput Include="../../tools/ProtocolGen/Program.cs;../../tools/ProtocolGen/ProtocolGen.csproj" />
+    <ProtocolGenInput Include="Bedrock/Packets/PacketId.cs;TransferTiming.cs;ProtocolFormat.cs;Protocol/default-protocol.jsonc" />
+    <!-- Visual Studio's fast up-to-date check: a definition change makes this project build. -->
+    <UpToDateCheckInput Include="@(ProtocolGenInput)" />
+  </ItemGroup>
+
+  <Target Name="GenerateProtocolConfig"
+          BeforeTargets="CoreCompile"
+          Condition="'$(GenerateProtocolConfig)' == 'true' and '$(DesignTimeBuild)' != 'true' and Exists('$(ProtocolGenProject)')"
+          Inputs="@(ProtocolGenInput)"
+          Outputs="$(IntermediateOutputPath)protocol-config.stamp">
+    <MSBuild Projects="$(ProtocolGenProject)"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)"
+             RemoveProperties="TargetFramework;RuntimeIdentifier;SelfContained;Platform;PlatformTarget">
+      <Output TaskParameter="TargetOutputs" PropertyName="_ProtocolGenAssembly" />
+    </MSBuild>
+    <PropertyGroup>
+      <_ProtocolGenHost>$(DOTNET_HOST_PATH)</_ProtocolGenHost>
+      <_ProtocolGenHost Condition="'$(_ProtocolGenHost)' == ''">dotnet</_ProtocolGenHost>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_ProtocolGenHost)&quot; &quot;$(_ProtocolGenAssembly)&quot; --default-path &quot;$(ProtocolConfigFile)&quot;" />
+    <Touch Files="$(IntermediateOutputPath)protocol-config.stamp" AlwaysCreate="true" />
+    <ItemGroup>
+      <FileWrites Include="$(IntermediateOutputPath)protocol-config.stamp" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="BedrockLan.WebRtc" />
     <InternalsVisibleTo Include="BedrockLan.Tests" />
   </ItemGroup>

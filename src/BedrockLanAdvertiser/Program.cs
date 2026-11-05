@@ -14,6 +14,7 @@ double? pollOverride = null;
 var verboseOverride = false;
 var noRakNet = false;
 var noNetherNet = false;
+string? protocolOverride = null;
 
 try
 {
@@ -39,6 +40,9 @@ try
                 break;
             case "--no-nethernet":
                 noNetherNet = true;
+                break;
+            case "--protocol":
+                protocolOverride = NextArg(ref i, arg);
                 break;
             default:
                 if (arg.StartsWith('-'))
@@ -128,6 +132,26 @@ catch (Exception ex) when (ex is InvalidDataException or FormatException or IOEx
     return 1;
 }
 
+// Protocol config: published updates by default; a file, another URL, or "builtin" if configured.
+string? protocolSource = (protocolOverride ?? config.Protocol ?? ProtocolConfig.DefaultUpdateUrl).Trim();
+if (ProtocolSource.IsBuiltIn(protocolSource))
+{
+    protocolSource = null;
+}
+else if (!ProtocolSource.IsUrl(protocolSource))
+{
+    // A local file is part of the configuration: a broken one stops here.
+    try
+    {
+        options.Transfer.Protocol = await ProtocolSource.LoadFileAsync(protocolSource, CancellationToken.None);
+    }
+    catch (Exception ex) when (ProtocolSource.IsLoadFailure(ex))
+    {
+        Console.Error.WriteLine($"Invalid protocol config {protocolSource}: {ex.Message}");
+        return 1;
+    }
+}
+
 var verbose = config.Verbose || verboseOverride;
 var consoleLock = new object();
 void Write(LanLogLevel level, string message)
@@ -161,6 +185,23 @@ void Write(LanLogLevel level, string message)
 
 options.Logger = Write;
 
+// A URL is only an update: if it can't be fetched (anything but HTTP 200) or doesn't validate, log it and keep
+// the built-in config. Its caching headers are kept for the refreshes below.
+ProtocolCacheInfo? protocolCache = null;
+if (protocolSource is not null && ProtocolSource.IsUrl(protocolSource))
+{
+    try
+    {
+        var first = await ProtocolSource.CheckUrlAsync(protocolSource, null, CancellationToken.None);
+        options.Transfer.Protocol = first.Config!;
+        protocolCache = first.Cache;
+    }
+    catch (Exception ex) when (ProtocolSource.IsLoadFailure(ex))
+    {
+        Write(LanLogLevel.Warning, $"Protocol config from {protocolSource} not used ({ex.Message}); using the built-in {ProtocolConfig.Default.ConfigVersion}.");
+    }
+}
+
 using var shutdown = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
 {
@@ -190,7 +231,45 @@ catch (OperationCanceledException)
 }
 
 PrintSummary(relay);
+Write(LanLogLevel.Info, $"Using {relay.Options.Transfer.Protocol}{(ReferenceEquals(relay.Options.Transfer.Protocol, ProtocolConfig.Default) ? " (built in)" : $" from {protocolSource}")}.");
 Write(LanLogLevel.Info, "Advertising. Press Ctrl+C to stop.");
+
+// A protocol config URL is checked again now and then, following its caching headers (an unchanged file isn't
+// downloaded again); a failed check or a bad file keeps the config in use.
+if (protocolSource is { } protocolUrl && ProtocolSource.IsUrl(protocolUrl) && config.ProtocolRefreshHours > 0)
+{
+    _ = Task.Run(async () =>
+    {
+        while (!shutdown.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromHours(config.ProtocolRefreshHours), shutdown.Token);
+                // The cache info describes the downloaded copy, so it's only sent while that copy is in use.
+                var inUse = relay.Options.Transfer.Protocol;
+                var result = await ProtocolSource.CheckUrlAsync(protocolUrl, ReferenceEquals(inUse, ProtocolConfig.Default) ? null : protocolCache, shutdown.Token);
+                protocolCache = result.Cache;
+                if (result.Outcome == ProtocolDownloadOutcome.Downloaded && result.Config!.Text != inUse.Text)
+                {
+                    relay.Options.Transfer.Protocol = result.Config;
+                    Write(LanLogLevel.Info, $"Protocol config updated to {result.Config.ConfigVersion}.");
+                }
+                else
+                {
+                    Write(LanLogLevel.Debug, $"Protocol config {inUse.ConfigVersion} is current ({result.Outcome}).");
+                }
+            }
+            catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex) when (ProtocolSource.IsLoadFailure(ex))
+            {
+                Write(LanLogLevel.Warning, $"Protocol config update failed ({ex.Message}); keeping {relay.Options.Transfer.Protocol.ConfigVersion}.");
+            }
+        }
+    });
+}
 
 try
 {
@@ -246,6 +325,11 @@ static void PrintUsage()
           -v, --verbose         Debug logging.
               --no-raknet       Don't advertise over RakNet (pre-26.60 clients).
               --no-nethernet    Don't advertise over NetherNet (26.50+ clients).
+              --protocol <file|url|builtin>
+                                Protocol config (packets and transfer steps). Default:
+                                the published one for this version, re-downloaded every
+                                12 hours (protocolRefreshHours); falls back to the
+                                built-in config if it can't be fetched.
 
         Each server's type is detected automatically. Persistent data (the NetherNet
         operator key) is stored in ./persist under the working directory.

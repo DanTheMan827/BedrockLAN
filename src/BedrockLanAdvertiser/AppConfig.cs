@@ -16,6 +16,17 @@ public sealed class AppConfig
     public double TransferDisconnectDelaySeconds { get; set; } = 10;
     public bool Verbose { get; set; }
 
+    /// <summary>
+    /// Protocol config (packets and transfer conversation): a file path, an http(s) URL, or "builtin". Default:
+    /// <see cref="ProtocolConfig.DefaultUpdateUrl"/>. A URL is downloaded again every
+    /// <see cref="ProtocolRefreshHours"/>; until a download succeeds (HTTP 200, valid config) the built-in config
+    /// (or the last good download) is used.
+    /// </summary>
+    public string? Protocol { get; set; }
+
+    /// <summary>How often a protocol config URL is downloaded again (0 = only at startup).</summary>
+    public double ProtocolRefreshHours { get; set; } = 12;
+
     /// <summary>Where the NetherNet operator key is kept. Default: ./persist in the working directory.</summary>
     public string? PersistDirectory { get; set; }
 
