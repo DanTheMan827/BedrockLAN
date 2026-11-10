@@ -44,6 +44,9 @@ public sealed class RelayServerOptions
     /// <summary>Explicit <see cref="UpstreamKind.NetherNetHttp"/> only: use https (auto-detection tries both).</summary>
     public bool UseHttps { get; init; }
 
-    /// <summary>Accept invalid TLS certificates when querying status over https (always on for auto-detection).</summary>
-    public bool AllowInvalidCertificate { get; init; }
+    /// <summary>
+    /// Accept TLS certificates that don't validate on the server's https signaling endpoint (status and joins).
+    /// On by default: NetherNet servers commonly use self-signed certificates. Always on for auto-detection.
+    /// </summary>
+    public bool AllowInvalidCertificate { get; init; } = true;
 }

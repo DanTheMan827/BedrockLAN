@@ -23,10 +23,17 @@ public enum UpstreamKind
 /// <summary>How NetherNet LAN clients are sent to a NetherNet upstream.</summary>
 public enum NetherNetConnectMode
 {
-    /// <summary>Transfer when a WebRTC transfer handler is configured, otherwise relay.</summary>
+    /// <summary>
+    /// Transfer when a WebRTC transfer handler is available (NetherNet LAN hosts, which have no host:port, are
+    /// relayed); otherwise relay.
+    /// </summary>
     Auto,
 
-    /// <summary>Relay WebRTC signaling so the client connects directly. Authenticated servers reject this.</summary>
+    /// <summary>
+    /// Relay WebRTC signaling so the client connects to the server directly. For HTTP-signaling servers, a refusal
+    /// (or no answer) falls back to the WebRTC transfer handler when one is available. Only for servers known to
+    /// work this way: a server can accept the relayed LAN offer and the client still fail to connect.
+    /// </summary>
     Relay,
 
     /// <summary>Terminate WebRTC locally and send a Transfer packet (requires a transfer handler, e.g. BedrockLan.WebRtc).</summary>

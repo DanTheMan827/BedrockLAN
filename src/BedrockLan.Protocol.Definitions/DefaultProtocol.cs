@@ -10,7 +10,7 @@ namespace BedrockLan.Protocol.Definitions;
 public static class DefaultProtocol
 {
     /// <summary>Bump when the packets or the session change, so clients can tell which copy they have.</summary>
-    public const string ConfigVersion = "2026-11-05.6";
+    public const string ConfigVersion = "2026-11-05.7";
 
     public static ProtocolDefinition Definition { get; } = new()
     {
@@ -75,12 +75,14 @@ public static class DefaultProtocol
         session.Stages.Add(new StageDefinition("awaitPacksResponse", PacketId.ResourcePackClientResponsePacket)
         {
             Doc = """
-                ResourcePackClientResponse: 1 Cancel, 2 Downloading, 3 DownloadingFinished, 4 ResourcePackStackFinished.
-                No packs are offered, so any of the first three moves on to the stack: 3 (has everything), 1 (declined;
-                packs aren't required) or 2 (asking to download, which 1.26.60 clients do even with no packs listed:
-                there's nothing to send, so the stack follows).
+                ResourcePackClientResponse. No packs are offered, so the client's first response (whatever it is:
+                Cancel, Downloading, or DownloadingFinished) means it's done with the empty set. Send the stack.
+
+                The response's enum value isn't relied on: it shifted between versions (a 1.26.60 client reports
+                DownloadingFinished as 2 and ResourcePackStackFinished as 3, where older docs list 3 and 4), and the
+                value doesn't matter when there are no packs. Waiting for one specific number is what made older
+                builds loop here.
                 """,
-            Read = { ReadDefinition.Match(Wire.Byte, 1, 2, 3) },
             Steps =
             {
                 new StepDefinition { Send = { "ResourcePackStack" }, Goto = "awaitStackResponse" },
@@ -89,55 +91,11 @@ public static class DefaultProtocol
 
         var stackResponse = new StageDefinition("awaitStackResponse", PacketId.ResourcePackClientResponsePacket)
         {
-            Doc = """
-                ...then 4 once it has applied the stack. A client that was still "downloading" when the stack arrived
-                (2 first, then 3 once it found there was nothing to download) ignores that stack and answers again:
-                send it once more.
-                """,
-            Read = { ReadDefinition.Into(Wire.Byte, "packStatus") },
-            Steps =
-            {
-                new StepDefinition
-                {
-                    If = When.Variable("packStatus", 1, 2, 3),
-                    Log = "client answered the stack with another pack response; sending the stack once more.",
-                    Send = { "ResourcePackStack" },
-                    Goto = "awaitStackRetryResponse",
-                },
-                new StepDefinition
-                {
-                    Doc = "Anything else but 4 (ResourcePackStackFinished): keep waiting.",
-                    If = When.Not(When.Variable("packStatus", 4)),
-                    Goto = "awaitStackResponse",
-                },
-            },
+            Doc = "The next ResourcePackClientResponse (ResourcePackStackFinished) acknowledges the stack; carry on.",
+            Steps = { },
         };
         stackResponse.Steps.AddRange(AfterStack());
         session.Stages.Add(stackResponse);
-
-        var stackRetry = new StageDefinition("awaitStackRetryResponse", PacketId.ResourcePackClientResponsePacket)
-        {
-            Doc = """
-                The client answered the resent stack with another pack response too. Don't loop (some clients answer
-                every stack with 3): carry on as if it had applied it.
-                """,
-            Read = { ReadDefinition.Into(Wire.Byte, "packStatus") },
-            Steps =
-            {
-                new StepDefinition
-                {
-                    If = When.Not(When.Variable("packStatus", 1, 2, 3, 4)),
-                    Goto = "awaitStackRetryResponse",
-                },
-                new StepDefinition
-                {
-                    If = When.Variable("packStatus", 1, 2, 3),
-                    Log = "client answered the stack with another pack response again; continuing as if it applied it.",
-                },
-            },
-        };
-        stackRetry.Steps.AddRange(AfterStack());
-        session.Stages.Add(stackRetry);
 
         session.Stages.Add(new StageDefinition("awaitChunkRadiusRequest", PacketId.RequestChunkRadiusPacket)
         {

@@ -150,91 +150,45 @@ public class TransferSessionTests
     }
 
     [Fact]
-    public void ResourcePacks_CancelIsTreatedLikeHaveAllPacks()
+    public void ResourcePacks_FirstResponseSendsStackSecondAdvances()
     {
+        // No packs are offered, so the client's response value doesn't matter: the first response sends the stack,
+        // the next one advances. (A 1.26.60 client reports DownloadingFinished as 2 and ResourcePackStackFinished as 3.)
         var client = new FakeClient(2225, TransferTiming.AfterResourcePacks);
         client.RequestNetworkSettings();
         client.Login();
-        client.ResourcePackResponse(1); // cancel: packs aren't required
-        Assert.Equal((int)PacketId.ResourcePackStackPacket, client.LastIds()[^1]);
 
-        client.ResourcePackResponse(4);
-        Assert.Equal((int)PacketId.TransferPacket, client.LastIds()[^1]);
-    }
-
-    [Fact]
-    public void ResourcePacks_OtherResponsesDoNotAdvance()
-    {
-        var client = new FakeClient(2225, TransferTiming.AfterResourcePacks);
-        client.RequestNetworkSettings();
-        client.Login();
         var sent = client.Packets.Count;
-
-        client.ResourcePackResponse(4); // stack finished before a stack was sent
-        Assert.Equal(sent, client.Packets.Count);
-
-        client.ResourcePackResponse(3);
-        client.ResourcePackResponse(3); // a repeated "have all packs" doesn't count as the stack response: resend it
-        Assert.Equal(sent + 2, client.Packets.Count);
+        client.ResourcePackResponse(2); // downloadingfinished on 2225
+        Assert.Equal(sent + 1, client.Packets.Count);
         Assert.Equal((int)PacketId.ResourcePackStackPacket, client.LastIds()[^1]);
         Assert.False(client.Session.IsFinished);
 
-        client.ResourcePackResponse(0); // not a response the stack stage knows: ignored
-        Assert.Equal(sent + 2, client.Packets.Count);
-        Assert.False(client.Session.IsFinished);
-
-        client.ResourcePackResponse(4);
+        client.ResourcePackResponse(3); // resourcepackstackfinished on 2225 (not 4)
+        Assert.Equal((int)PacketId.TransferPacket, client.LastIds()[^1]);
         Assert.True(client.Session.IsFinished);
     }
 
-    /// <summary>
-    /// Seen from a 2225 client: "downloading" (2), which gets the stack, then "have all packs" (3) once it finds
-    /// there's nothing to download. It ignored the first stack, so it gets it again, then answers 4.
-    /// </summary>
     [Fact]
-    public void ResourcePacks_DownloadingThenHaveAllGetsTheStackAgain()
+    public void ResourcePacks_CancelStillGetsTheStack()
     {
-        var client = new FakeClient(2225, TransferTiming.AfterSpawn);
+        var client = new FakeClient(2225, TransferTiming.AfterResourcePacks);
         client.RequestNetworkSettings();
         client.Login();
 
-        client.ResourcePackResponse(2);
+        client.ResourcePackResponse(1); // cancel: packs aren't required
         Assert.Equal((int)PacketId.ResourcePackStackPacket, client.LastIds()[^1]);
 
-        var sent = client.Packets.Count;
         client.ResourcePackResponse(3);
-        Assert.Equal(sent + 1, client.Packets.Count);
-        Assert.Equal(new[] { (int)PacketId.ResourcePackStackPacket }, client.LastIds());
-        Assert.False(client.Session.IsFinished);
-
-        client.ResourcePackResponse(4);
-        Assert.Equal((int)PacketId.ItemRegistryPacket, client.LastIds()[^1]); // on to the temporary game
+        Assert.Equal((int)PacketId.TransferPacket, client.LastIds()[^1]);
     }
 
     /// <summary>
-    /// 1.26.60 clients answer ResourcePacksInfo with "downloading" (2) even though no packs are listed; there's
-    /// nothing to send, so the stack follows, as for "have all packs".
+    /// The real 1.26.60 (protocol 2225) sequence from the log: DownloadingFinished (2), then
+    /// ResourcePackStackFinished (3). The stack is sent exactly once, then the temporary game starts.
     /// </summary>
     [Fact]
-    public void ResourcePacks_DownloadingRequestGetsTheStack()
-    {
-        var client = new FakeClient(2225, TransferTiming.AfterSpawn);
-        client.RequestNetworkSettings();
-        client.Login();
-
-        client.ResourcePackResponse(2);
-        Assert.Equal((int)PacketId.ResourcePackStackPacket, client.LastIds()[^1]);
-
-        client.ResourcePackResponse(4);
-        Assert.Equal((int)PacketId.ItemRegistryPacket, client.LastIds()[^1]); // on to the temporary game
-    }
-
-    /// <summary>
-    /// Seen from a 2225 client: it answers every stack with 3. The stack is sent once more, then the session
-    /// carries on as if the client had applied it, instead of looping.
-    /// </summary>
-    [Fact]
-    public void ResourcePacks_RepeatedHaveAllDoesNotLoop()
+    public void ResourcePacks_SendsTheStackOnce()
     {
         var client = new FakeClient(2225, TransferTiming.AfterSpawn);
         client.RequestNetworkSettings();
@@ -242,18 +196,10 @@ public class TransferSessionTests
 
         client.ResourcePackResponse(2);
         client.ResourcePackResponse(3);
-        client.ResourcePackResponse(3);
+
         Assert.Equal((int)PacketId.ItemRegistryPacket, client.LastIds()[^1]); // on to the temporary game
         var stacks = client.AllIds().Count(id => id == (int)PacketId.ResourcePackStackPacket);
-        Assert.Equal(2, stacks);
-
-        var sent = client.Packets.Count;
-        client.ResourcePackResponse(3); // late repeats are ignored
-        Assert.Equal(sent, client.Packets.Count);
-
-        client.RequestChunkRadius(4);
-        client.Initialised();
-        Assert.Equal((int)PacketId.TransferPacket, client.LastIds()[^1]);
+        Assert.Equal(1, stacks);
     }
 
     [Fact]

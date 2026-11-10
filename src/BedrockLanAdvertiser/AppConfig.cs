@@ -65,7 +65,7 @@ public sealed class AppConfig
         public string Type { get; set; } = "auto";
 
         public bool Https { get; set; }
-        public bool AllowInvalidCertificate { get; set; }
+        public bool AllowInvalidCertificate { get; set; } = true;
         public string? TransferHost { get; set; }
         public int? TransferPort { get; set; }
         public bool AdvertiseRakNet { get; set; } = true;

@@ -391,9 +391,30 @@ public sealed class BedrockRelay : IDisposable, IAsyncDisposable
     {
         var mode = kind == UpstreamKind.RakNet ? NetherNetConnectMode.Transfer : server.Options.NetherNetMode;
         var factory = _transferFactory;
+        Action<IPEndPoint> relayed = client => OnRedirected(server, client, RelayTransport.NetherNet, RedirectMethod.SignalingRelay, null, null);
+        HttpSignalingBridge HttpRelay(Func<NetherNetClientMessage, ulong, Exception, bool>? failed = null, TimeSpan? joinTimeout = null) =>
+            new(server.SignalingClients, server.Address, () => Options.CandidateWindow, () => Options.TrickleAnswerCandidates, _log, relayed,
+                server.PreferSignalingClient, failed, joinTimeout);
+        INetherNetSignalHandler Transfer() => factory!(new NetherNetHandlerContext(
+            server,
+            hub,
+            TargetFor(server),
+            Options.Transfer,
+            _log,
+            (client, target, protocol) => OnRedirected(server, client, RelayTransport.NetherNet, RedirectMethod.TransferPacket, target, protocol)));
+
         if (mode == NetherNetConnectMode.Auto)
         {
+            // Transfer where possible: a relayed LAN offer can be accepted by the server (it answers) and still
+            // fail on the client, which we can't see from here. LAN hosts have no host:port, so they're relayed.
             mode = kind != UpstreamKind.NetherNetLan && factory is not null ? NetherNetConnectMode.Transfer : NetherNetConnectMode.Relay;
+        }
+
+        if (mode == NetherNetConnectMode.Relay && kind == UpstreamKind.NetherNetHttp && factory is not null)
+        {
+            // Opt-in: forward the join; if the server refuses the LAN offer, answer it ourselves and Transfer.
+            _log.Info($"[{server.Name}] NetherNet joins: relaying signaling to {server.HttpClient?.BaseUri}, WebRTC transfer to {server.TransferTarget} if the server refuses it.");
+            return new RelayThenTransferHandler(failed => HttpRelay(failed, RelayJoinTimeout), Transfer(), server.Address, _log);
         }
 
         if (mode == NetherNetConnectMode.Transfer && kind != UpstreamKind.NetherNetLan)
@@ -401,24 +422,17 @@ public sealed class BedrockRelay : IDisposable, IAsyncDisposable
             if (factory is not null)
             {
                 _log.Info($"[{server.Name}] NetherNet joins: WebRTC transfer to {server.TransferTarget}.");
-                return factory(new NetherNetHandlerContext(
-                    server,
-                    hub,
-                    TargetFor(server),
-                    Options.Transfer,
-                    _log,
-                    (client, target, protocol) => OnRedirected(server, client, RelayTransport.NetherNet, RedirectMethod.TransferPacket, target, protocol)));
+                return Transfer();
             }
 
             _log.Warn($"[{server.Name}] Transfer needs a WebRTC transfer handler (BedrockLan.WebRtc); falling back to signaling relay, which authenticated servers reject.");
         }
 
-        Action<IPEndPoint> relayed = client => OnRedirected(server, client, RelayTransport.NetherNet, RedirectMethod.SignalingRelay, null, null);
         switch (kind)
         {
             case UpstreamKind.NetherNetHttp:
                 _log.Info($"[{server.Name}] NetherNet joins: relaying signaling to {server.HttpClient?.BaseUri}.");
-                return new HttpSignalingBridge(() => server.HttpClient, server.Address, () => Options.CandidateWindow, () => Options.TrickleAnswerCandidates, _log, relayed);
+                return HttpRelay();
             case UpstreamKind.NetherNetLan:
                 _log.Info($"[{server.Name}] NetherNet joins: relaying LAN signaling to {server.Host}.");
                 return new LanSignalingBridge(hub, () => server.LanUpstream, server.Address, _log, relayed);
@@ -426,6 +440,9 @@ public sealed class BedrockRelay : IDisposable, IAsyncDisposable
                 return null;
         }
     }
+
+    /// <summary>Auto mode: how long a relayed join may take before the transfer server answers instead.</summary>
+    private static readonly TimeSpan RelayJoinTimeout = TimeSpan.FromSeconds(4);
 
     private Func<NetherNetHandlerContext, INetherNetSignalHandler>? TryLoadWebRtcTransfer()
     {

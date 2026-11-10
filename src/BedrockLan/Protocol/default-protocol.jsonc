@@ -64,7 +64,7 @@
 //   { "any": [..] }, { "all": [..] }, { "not": {..} }.
 {
   "formatVersion": 1,
-  "configVersion": "2026-11-05.6",
+  "configVersion": "2026-11-05.7",
 
   // Types used by the packets, named and laid out as in Mojang's bedrock-protocol-docs.
   "types": {
@@ -570,39 +570,24 @@
         ],
       },
 
-      // ResourcePackClientResponse: 1 Cancel, 2 Downloading, 3 DownloadingFinished, 4 ResourcePackStackFinished.
-      // No packs are offered, so any of the first three moves on to the stack: 3 (has everything), 1 (declined;
-      // packs aren't required) or 2 (asking to download, which 1.26.60 clients do even with no packs listed:
-      // there's nothing to send, so the stack follows).
+      // ResourcePackClientResponse. No packs are offered, so the client's first response (whatever it is:
+      // Cancel, Downloading, or DownloadingFinished) means it's done with the empty set. Send the stack.
+      // 
+      // The response's enum value isn't relied on: it shifted between versions (a 1.26.60 client reports
+      // DownloadingFinished as 2 and ResourcePackStackFinished as 3, where older docs list 3 and 4), and the
+      // value doesn't matter when there are no packs. Waiting for one specific number is what made older
+      // builds loop here.
       "awaitPacksResponse": {
-        "expect": { "packet": 8, "read": [ { "Byte": [1, 2, 3] } ] },
+        "expect": { "packet": 8 },
         "steps": [
           { "send": [ "ResourcePackStack" ], "goto": "awaitStackResponse" },
         ],
       },
 
-      // ...then 4 once it has applied the stack. A client that was still "downloading" when the stack arrived
-      // (2 first, then 3 once it found there was nothing to download) ignores that stack and answers again:
-      // send it once more.
+      // The next ResourcePackClientResponse (ResourcePackStackFinished) acknowledges the stack; carry on.
       "awaitStackResponse": {
-        "expect": { "packet": 8, "read": [ { "Byte": "$packStatus" } ] },
+        "expect": { "packet": 8 },
         "steps": [
-          { "if": { "variable": { "$packStatus": [1, 2, 3] } }, "log": "client answered the stack with another pack response; sending the stack once more.", "send": [ "ResourcePackStack" ], "goto": "awaitStackRetryResponse" },
-          // Anything else but 4 (ResourcePackStackFinished): keep waiting.
-          { "if": { "not": { "variable": { "$packStatus": 4 } } }, "goto": "awaitStackResponse" },
-          // 1.26.60+ clients (2207+) ignore a Transfer sent during login: start a minimal empty game first.
-          { "if": { "all": [ { "timing": "AfterSpawn" }, { "protocol": { "min": 2207 } } ] }, "log": "starting temporary game.", "send": [ "JigsawStructureData", "VoxelShapes", "StartGame", "ItemRegistry" ], "goto": "awaitChunkRadiusRequest" },
-          { "transfer": true },
-        ],
-      },
-
-      // The client answered the resent stack with another pack response too. Don't loop (some clients answer
-      // every stack with 3): carry on as if it had applied it.
-      "awaitStackRetryResponse": {
-        "expect": { "packet": 8, "read": [ { "Byte": "$packStatus" } ] },
-        "steps": [
-          { "if": { "not": { "variable": { "$packStatus": [1, 2, 3, 4] } } }, "goto": "awaitStackRetryResponse" },
-          { "if": { "variable": { "$packStatus": [1, 2, 3] } }, "log": "client answered the stack with another pack response again; continuing as if it applied it." },
           // 1.26.60+ clients (2207+) ignore a Transfer sent during login: start a minimal empty game first.
           { "if": { "all": [ { "timing": "AfterSpawn" }, { "protocol": { "min": 2207 } } ] }, "log": "starting temporary game.", "send": [ "JigsawStructureData", "VoxelShapes", "StartGame", "ItemRegistry" ], "goto": "awaitChunkRadiusRequest" },
           { "transfer": true },

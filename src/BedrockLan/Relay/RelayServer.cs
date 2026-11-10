@@ -330,6 +330,31 @@ public sealed class RelayServer : IDisposable, IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Signaling endpoints to post a join to: the detected (or configured) scheme first, then the other one, since
+    /// some servers only speak http and others only https.
+    /// </summary>
+    internal IReadOnlyList<HttpSignalingClient> SignalingClients()
+    {
+        if (HttpClient is not { } current)
+        {
+            return System.Array.Empty<HttpSignalingClient>();
+        }
+
+        try
+        {
+            var other = GetHttpClient(https: current.BaseUri.Scheme != Uri.UriSchemeHttps);
+            return new[] { current, other };
+        }
+        catch (ObjectDisposedException)
+        {
+            return new[] { current };
+        }
+    }
+
+    /// <summary>Prefer the endpoint that answered a join (e.g. https when http wasn't served).</summary>
+    internal void PreferSignalingClient(HttpSignalingClient client) => Volatile.Write(ref _httpClient, client);
+
     internal void ApplyDetection(UpstreamKind kind, HttpSignalingClient? http)
     {
         if (http is not null)
