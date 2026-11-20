@@ -1,8 +1,8 @@
 # docker compose up -d
 services:
   bedrock-lan:
-    build: .
-    image: bedrock-lan
+    image: ghcr.io/dantheman827/bedrocklan:latest   # published by the "Docker image" workflow
+    # build: .                                      # or build it from this folder instead
     container_name: bedrock-lan
     restart: unless-stopped
     # Required: LAN discovery relies on UDP broadcasts, which the bridge network doesn't carry.

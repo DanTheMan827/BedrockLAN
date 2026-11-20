@@ -4,6 +4,5 @@
 **/.vs/
 **/*.user
 .git/
-src/BedrockLanApp/
 tests/
 *.zip

@@ -11,7 +11,9 @@
 # mounted at /data/servers.json instead of passing servers as arguments.
 
 # ---- Build -------------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# The build runs on the builder's own platform: the output is framework-dependent (no app host), so one build
+# serves every target architecture and multi-arch builds don't compile .NET under emulation.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore first (cached until a project file changes).
@@ -29,7 +31,7 @@ RUN dotnet publish src/BedrockLanAdvertiser/BedrockLanAdvertiser.csproj \
     && rm -f /app/servers.json
 
 # ---- Runtime -----------------------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 
 # Working directory = data directory: ./persist and ./servers.json resolve here.
 WORKDIR /data

@@ -1,0 +1,74 @@
+# Builds and tests the library (which regenerates the built-in protocol config from the C# definitions), checks the
+# committed config is current, and publishes protocol-<formatVersion>.jsonc to GitHub Pages, where the library looks
+# for updates (ProtocolConfig.DefaultUpdateUrl):
+#   https://dantheman827.github.io/BedrockLAN/protocol-<formatVersion>.jsonc
+#
+# One-time setup: Settings > Pages > Build and deployment > Source: "GitHub Actions".
+name: Publish protocol config
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - "src/BedrockLan/**"
+      - "src/BedrockLan.Protocol.Definitions/**"
+      - "tools/ProtocolGen/**"
+      - "tests/**"
+      - ".github/workflows/publish-protocol.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      # Building BedrockLan (a dependency of the tests) regenerates src/BedrockLan/Protocol/default-protocol.jsonc.
+      - name: Build and test
+        run: dotnet test tests/BedrockLan.Tests/BedrockLan.Tests.csproj -c Release
+
+      - name: Check the committed config is up to date
+        run: |
+          git diff --exit-code -- src/BedrockLan/Protocol/default-protocol.jsonc \
+            || { echo "::error::default-protocol.jsonc is out of date: build BedrockLan and commit it."; exit 1; }
+
+      - name: Generate
+        run: dotnet run --project tools/ProtocolGen -c Release -- --check --out-dir site
+
+      - name: Index page
+        run: |
+          {
+            echo '<!doctype html><meta charset="utf-8"><title>BedrockLan protocol config</title>'
+            echo '<p>Protocol configs for <a href="https://github.com/${{ github.repository }}">BedrockLan</a>:</p><ul>'
+            for f in site/protocol-*.jsonc; do n=$(basename "$f"); echo "<li><a href=\"$n\">$n</a></li>"; done
+            echo '</ul>'
+          } > site/index.html
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
