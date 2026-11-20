@@ -38,7 +38,7 @@ dotnet run -- --config servers.json                   # or a config file
 ```
 
 Options: `--config <file>`, `--poll <seconds>`, `--verbose`, `--no-raknet`, `--no-nethernet`,
-`--protocol <file|url|builtin>`. Persistent data (the NetherNet operator key) goes in `./persist` under the
+`--protocol <file|url|builtin>`, `--licenses` (prints the licenses of the open-source components used). Persistent data (the NetherNet operator key) goes in `./persist` under the
 working directory.
 
 Open these firewall ports on the advertising machine: **UDP 7551**, **UDP 19132**, and **UDP 19140 and up**
@@ -269,6 +269,15 @@ Mojang's docs up to protocol 2259 (1.26.70-preview.26).
 - If a real server on the same machine holds UDP 19132 or 7551 exclusively, that discovery path is disabled with a
   warning.
 
+## Third-party licenses
+
+The open-source projects this repository uses or redistributes, each with its license, are in
+[`licenses/`](licenses), one file per project. The advertiser embeds them: `--licenses` prints them all.
+
+The WebRTC transfer server depends on [SIPSorcery](https://github.com/sipsorcery-org/sipsorcery), whose license is
+BSD-3-Clause with an additional use restriction (section 2 of [`licenses/SIPSorcery.txt`](licenses/SIPSorcery.txt)).
+Building with `-p:EnableWebRtc=false` leaves SIPSorcery and its dependencies out.
+
 ## Layout
 
 ```
@@ -283,4 +292,5 @@ src/BedrockLan.Protocol.Definitions/  C# source of the protocol config (shared s
 src/BedrockLanAdvertiser/             command-line advertiser + sample servers.json
 tests/BedrockLan.Tests/               xUnit tests
 tools/ProtocolGen/                    generates the protocol config from the definitions
+licenses/                             licenses of the open-source projects used
 ```

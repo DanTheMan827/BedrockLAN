@@ -25,6 +25,7 @@ RUN dotnet restore src/BedrockLanAdvertiser/BedrockLanAdvertiser.csproj
 COPY src/BedrockLan/ src/BedrockLan/
 COPY src/BedrockLan.WebRtc/ src/BedrockLan.WebRtc/
 COPY src/BedrockLanAdvertiser/ src/BedrockLanAdvertiser/
+COPY licenses/ licenses/
 RUN dotnet publish src/BedrockLanAdvertiser/BedrockLanAdvertiser.csproj \
         -c Release -o /app --no-restore -p:UseAppHost=false \
     # The sample servers.json would otherwise be picked up when no servers are given.

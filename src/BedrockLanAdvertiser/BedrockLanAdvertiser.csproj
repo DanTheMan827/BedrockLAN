@@ -27,4 +27,9 @@
     <None Update="servers.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Licenses of the open-source components, printed by the "licenses" option. -->
+    <EmbeddedResource Include="..\..\licenses\*.txt" Link="licenses\%(Filename)%(Extension)" LogicalName="licenses/%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

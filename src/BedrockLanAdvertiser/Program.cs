@@ -26,6 +26,9 @@ try
             case "-h" or "--help" or "/?":
                 PrintUsage();
                 return 0;
+            case "--licenses":
+                PrintLicenses();
+                return 0;
             case "-c" or "--config":
                 configPath = NextArg(ref i, arg);
                 break;
@@ -330,10 +333,43 @@ static void PrintUsage()
                                 the published one for this version, re-downloaded every
                                 12 hours (protocolRefreshHours); falls back to the
                                 built-in config if it can't be fetched.
+              --licenses        Show the licenses of the open-source components used.
 
         Each server's type is detected automatically. Persistent data (the NetherNet
         operator key) is stored in ./persist under the working directory.
         """);
+}
+
+// The licenses in /licenses, embedded at build time, in alphabetical order of project name.
+static void PrintLicenses()
+{
+    const string Prefix = "licenses/";
+    var assembly = typeof(Program).Assembly;
+    var names = assembly.GetManifestResourceNames()
+        .Where(n => n.StartsWith(Prefix, StringComparison.Ordinal))
+        .OrderBy(n => Path.GetFileNameWithoutExtension(n[Prefix.Length..]), StringComparer.OrdinalIgnoreCase)
+        .ToList();
+    if (names.Count == 0)
+    {
+        Console.WriteLine("No license information was included in this build.");
+        return;
+    }
+
+    Console.OutputEncoding = System.Text.Encoding.UTF8; // the texts include quotes, dashes and (c) signs
+    var separator = new string('-', 40);
+    for (var i = 0; i < names.Count; i++)
+    {
+        if (i > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine(separator);
+            Console.WriteLine();
+        }
+
+        using var stream = assembly.GetManifestResourceStream(names[i])!;
+        using var reader = new StreamReader(stream);
+        Console.WriteLine(reader.ReadToEnd().TrimEnd());
+    }
 }
 
 static void PrintSummary(BedrockRelay relay)
