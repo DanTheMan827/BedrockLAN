@@ -43,6 +43,15 @@
           Condition="'$(GenerateProtocolConfig)' == 'true' and '$(DesignTimeBuild)' != 'true' and Exists('$(ProtocolGenProject)')"
           Inputs="@(ProtocolGenInput)"
           Outputs="$(IntermediateOutputPath)protocol-config.stamp">
+    <!--
+      Restore it first: the tool isn't in the solution and isn't a ProjectReference, so on a fresh clone nothing else
+      restores it (NETSDK1004, assets file not found). The unique session id gives restore its own evaluation, so the
+      Build below re-reads what it generated. A no-op once restored.
+    -->
+    <MSBuild Projects="$(ProtocolGenProject)"
+             Targets="Restore"
+             Properties="Configuration=$(Configuration);MSBuildRestoreSessionId=$([System.Guid]::NewGuid())"
+             RemoveProperties="TargetFramework;RuntimeIdentifier;SelfContained;Platform;PlatformTarget" />
     <MSBuild Projects="$(ProtocolGenProject)"
              Targets="Build"
              Properties="Configuration=$(Configuration)"
