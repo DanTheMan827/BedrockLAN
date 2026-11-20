@@ -261,7 +261,7 @@ handshake for every documented protocol. NetherNet discovery is checked against 
 
 Confirmed with real clients: detection, status forwarding, LAN listing, and the NetherNet transfer end to end with
 a 26.60 client (WebRTC handshake, temporary game, Transfer after spawning). Packet layouts were checked against
-Mojang's docs up to protocol 2250 (1.26.70-preview.23).
+Mojang's docs up to protocol 2259 (1.26.70-preview.26).
 
 - **Several LAN entries from one IP.** Each RakNet entry answers from its own port with its own GUID, and each
   NetherNet entry has its own network id. Client de-duplication rules aren't documented.

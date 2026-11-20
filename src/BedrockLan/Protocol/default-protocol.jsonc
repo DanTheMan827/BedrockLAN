@@ -64,7 +64,7 @@
 //   { "any": [..] }, { "all": [..] }, { "not": {..} }.
 {
   "formatVersion": 1,
-  "configVersion": "2026-11-05.7",
+  "configVersion": "2026-11-20.1",
 
   // Types used by the packets, named and laid out as in Mojang's bedrock-protocol-docs.
   "types": {
@@ -354,6 +354,7 @@
         { "Bool": false }, // client throttle enabled
         { "Byte": 0 }, // client throttle threshold
         { "FloatLE": 0 }, // client throttle scalar
+        { "Byte": 0, "since": 2259 }, // SCTP recovery profile: 0 default (1 fast, 2 balanced)
       ],
     },
     "PlayStatusLoginSuccess": {
@@ -415,7 +416,7 @@
       ],
     },
     // A minimal StartGame: empty world, player floating at y=100 in adventure mode. Checked against Mojang's
-    // docs for 2168-2250; the only wire change in that range is the migration version byte from 2216.
+    // docs for 2168-2259; the only wire change in that range is the migration version byte from 2216.
     "StartGame": {
       "id": 11,
       "body": [

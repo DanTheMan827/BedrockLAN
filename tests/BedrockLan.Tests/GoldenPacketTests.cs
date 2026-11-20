@@ -7,7 +7,7 @@ namespace BedrockLan.Tests;
 /// Known-good bytes for every packet the transfer server sends, checked against both serializers: the protocol
 /// config (ProtocolConfig.Default, what the server actually sends) and the C# definitions it is generated from
 /// (DefinitionSerializer). The expected bytes are fixed data: they're what the hand-written packet classes wrote
-/// before packets became data, which were checked against Mojang's bedrock-protocol-docs for 2168-2250 and
+/// before packets became data, which were checked against Mojang's bedrock-protocol-docs for 2168-2250 (plus the one 2259 change, NetworkSettings' SCTP recovery profile, from the docs) and
 /// against real clients. A change to the definitions that alters the wire format fails here.
 /// </summary>
 public class GoldenPacketTests
@@ -27,7 +27,7 @@ public class GoldenPacketTests
     private static readonly int[] Protocols =
     {
         554, 621, 622, 711, 712, 728, 729, 747, 748, 765, 766, 817, 818, 897, 898, 2167, 2168, 2191, 2192, 2215, 2216,
-        2234, 2235, 2238, 2239, 2249, 2250, 2251, 9999,
+        2234, 2235, 2238, 2239, 2249, 2250, 2251, 2258, 2259, 2260, 9999,
     };
 
     /// <summary>Packet name → (first protocol, bytes from then until the next entry), oldest first.</summary>
@@ -106,6 +106,8 @@ public class GoldenPacketTests
 
         Add("NetworkSettings", 554,
             "8F0100010000000000000000");
+        Add("NetworkSettings", 2259,
+            "8F010001000000000000000000");
         Add("PlayStatusLoginSuccess", 554,
             "0200000000");
         Add("PlayStatusPlayerSpawn", 554,

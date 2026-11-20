@@ -19,16 +19,23 @@ public class PacketTests
 
     private static readonly string Uuid0 = new('0', 32); // 16 zero bytes as hex
 
-    [Fact]
-    public void NetworkSettings_EncodesThresholdAndFlate()
+    [Theory]
+    [InlineData(2258, false)]
+    [InlineData(2259, true)] // + SCTP recovery profile
+    public void NetworkSettings_EncodesThresholdAndFlate(int protocol, bool hasRecoveryProfile)
     {
-        var r = new ByteReader(Build("NetworkSettings"));
+        var r = new ByteReader(Build("NetworkSettings", protocol));
         Assert.Equal((uint)PacketId.NetworkSettingsPacket, r.VarUInt32());
         Assert.Equal(256, r.UInt16LE());   // compression threshold
         Assert.Equal(0, r.UInt16LE());     // algorithm: flate
         Assert.False(r.Bool());            // client throttle enabled
         Assert.Equal(0, r.Byte());         // client throttle threshold
         Assert.Equal(0u, r.UInt32LE());    // client throttle scalar (0.0f)
+        if (hasRecoveryProfile)
+        {
+            Assert.Equal(0, r.Byte());     // SCTP recovery profile: Default
+        }
+
         Assert.Equal(0, r.Remaining);
     }
 
@@ -176,13 +183,13 @@ public class PacketTests
         Assert.Equal(before.Length + 1, after.Length);
     }
 
-    // ---- Every documented protocol (2168-2250), read back with readers written from Mojang's docs ----
+    // ---- Every documented protocol (2168-2259), read back with readers written from Mojang's docs ----
 
     [Theory]
     [MemberData(nameof(BedrockDocs.Protocols), MemberType = typeof(BedrockDocs))]
     public void NetworkSettings_MatchesDocs(int protocol)
     {
-        Assert.Equal(256, BedrockDocs.ReadNetworkSettings(Build("NetworkSettings", protocol)));
+        Assert.Equal(256, BedrockDocs.ReadNetworkSettings(Build("NetworkSettings", protocol), protocol));
     }
 
     [Theory]

@@ -16,7 +16,7 @@ namespace BedrockLan.Tests;
 /// </remarks>
 internal static class BedrockDocs
 {
-    /// <summary>Every protocol published in the docs from 1.26.40 (2168) to 1.26.70-preview.23 (2250).</summary>
+    /// <summary>Every protocol published in the docs from 1.26.40 (2168) to 1.26.70-preview.26 (2259).</summary>
     public static readonly int[] DocumentedProtocols =
     {
         2168, // 1.26.40 - 1.26.44
@@ -31,18 +31,19 @@ internal static class BedrockDocs
         2211, // 1.26.60-preview.25
         2216, // 1.26.60-preview.28
         2223, // 1.26.60-preview.29
-        2225, // 1.26.60 - 1.26.62
+        2225, // 1.26.60 - 1.26.66
         2235, // 1.26.70-preview.20
         2238, // 1.26.70-preview.21
         2239, // 1.26.70-preview.22
         2250, // 1.26.70-preview.23
+        2259, // 1.26.70-preview.24 - preview.26
     };
 
     /// <summary>Newest documented protocol; anything newer is expected to be encoded exactly like it.</summary>
-    public const int NewestKnown = 2250;
+    public const int NewestKnown = 2259;
 
     /// <summary>Undocumented protocols newer than <see cref="NewestKnown"/>, standing in for future versions.</summary>
-    public static readonly int[] NewerProtocols = { 2251, 2300, 9999 };
+    public static readonly int[] NewerProtocols = { 2260, 2300, 9999 };
 
     public static TheoryData<int> Protocols()
     {
@@ -87,7 +88,7 @@ internal static class BedrockDocs
         var id = (PacketId)(new ByteReader(packet).VarUInt32() & 0x3FF);
         switch (id)
         {
-            case PacketId.NetworkSettingsPacket: ReadNetworkSettings(packet); break;
+            case PacketId.NetworkSettingsPacket: ReadNetworkSettings(packet, protocol); break;
             case PacketId.PlayStatusPacket: ReadPlayStatus(packet); break;
             case PacketId.ResourcePacksInfoPacket: ReadResourcePacksInfo(packet, protocol); break;
             case PacketId.ResourcePackStackPacket: ReadResourcePackStack(packet, protocol); break;
@@ -103,8 +104,9 @@ internal static class BedrockDocs
         }
     }
 
-    // NetworkSettings: uint16 threshold, uint16 algorithm (ZLib = 0), bool throttle, uint8 threshold, float scalar.
-    public static ushort ReadNetworkSettings(byte[] packet)
+    // NetworkSettings: uint16 threshold, uint16 algorithm (ZLib = 0), bool throttle, uint8 threshold, float scalar,
+    // then from 2259 a uint8 SCTP recovery profile (Default = 0, Fast = 1, Balanced = 2).
+    public static ushort ReadNetworkSettings(byte[] packet, int protocol)
     {
         var r = Open(packet, PacketId.NetworkSettingsPacket);
         var threshold = r.UInt16LE();
@@ -112,6 +114,11 @@ internal static class BedrockDocs
         r.Bool();
         r.Byte();
         r.UInt32LE();
+        if (protocol >= 2259)
+        {
+            Assert.Equal(0, r.Byte()); // SCTP recovery profile: Default
+        }
+
         Done(r);
         return threshold;
     }

@@ -1,6 +1,6 @@
 namespace BedrockLan.Protocol.Definitions.Types;
 
-// StartGame's nested types (Mojang's bedrock-protocol-docs, checked for protocols 2168-2250).
+// StartGame's nested types (Mojang's bedrock-protocol-docs, checked for protocols 2168-2259).
 
 [ProtocolType]
 [Doc("SpawnSettings: biome and dimension the player spawns in.")]

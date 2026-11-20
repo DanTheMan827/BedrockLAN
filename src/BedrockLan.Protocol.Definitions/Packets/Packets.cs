@@ -3,7 +3,7 @@ using BedrockLan.Protocol.Definitions.Types;
 
 namespace BedrockLan.Protocol.Definitions.Packets;
 
-// The packets the transfer server sends, laid out as in Mojang's bedrock-protocol-docs (checked for 2168-2250) and,
+// The packets the transfer server sends, laid out as in Mojang's bedrock-protocol-docs (checked for 2168-2259) and,
 // for older protocols, CloudburstMC/Protocol. Property initializers are the values sent; [Variable] fields are filled
 // in by the session at send time.
 
@@ -30,6 +30,11 @@ public sealed class NetworkSettingsPacket
     [Field(4)]
     [Doc("client throttle scalar")]
     public float ClientThrottleScalar { get; init; }
+
+    [Field(5, Wire = Wire.Byte)]
+    [Since(2259)]
+    [Doc("SCTP recovery profile: 0 default (1 fast, 2 balanced)")]
+    public byte SctpRecoveryProfile { get; init; }
 }
 
 [Packet((int)PacketId.PlayStatusPacket)]
@@ -152,7 +157,7 @@ public sealed class VoxelShapesPacket
 [Packet((int)PacketId.StartGamePacket)]
 [Doc("""
     A minimal StartGame: empty world, player floating at y=100 in adventure mode. Checked against Mojang's
-    docs for 2168-2250; the only wire change in that range is the migration version byte from 2216.
+    docs for 2168-2259; the only wire change in that range is the migration version byte from 2216.
     """)]
 public sealed class StartGamePacket
 {

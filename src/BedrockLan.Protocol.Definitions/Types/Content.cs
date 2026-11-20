@@ -1,6 +1,6 @@
 namespace BedrockLan.Protocol.Definitions.Types;
 
-// Resource packs, items and voxel shapes (Mojang's bedrock-protocol-docs; layouts as of 2168-2250).
+// Resource packs, items and voxel shapes (Mojang's bedrock-protocol-docs; layouts as of 2168-2259).
 
 [ProtocolType]
 [Doc("A pack's version.")]

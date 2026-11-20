@@ -10,7 +10,7 @@ namespace BedrockLan.Protocol.Definitions;
 public static class DefaultProtocol
 {
     /// <summary>Bump when the packets or the session change, so clients can tell which copy they have.</summary>
-    public const string ConfigVersion = "2026-11-05.7";
+    public const string ConfigVersion = "2026-11-20.1";
 
     public static ProtocolDefinition Definition { get; } = new()
     {
