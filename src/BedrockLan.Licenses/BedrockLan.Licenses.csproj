@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>BedrockLan.Licenses</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>BedrockLan.Licenses</PackageId>
+    <Description>The licenses of the open-source components BedrockLan uses, as a dictionary keyed by project name.</Description>
+    <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/DanTheMan827/BedrockLAN</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/DanTheMan827/BedrockLAN.git</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The repository's licenses folder, one file per project; read by ThirdPartyLicenses.GetAll(). -->
+    <EmbeddedResource Include="..\..\licenses\*.txt" Link="licenses\%(Filename)%(Extension)" LogicalName="licenses/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

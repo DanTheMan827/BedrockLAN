@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 using System.Globalization;
 using System.Runtime.InteropServices;
 using BedrockLan;
@@ -343,32 +347,24 @@ static void PrintUsage()
 // The licenses in /licenses, embedded at build time, in alphabetical order of project name.
 static void PrintLicenses()
 {
-    const string Prefix = "licenses/";
-    var assembly = typeof(Program).Assembly;
-    var names = assembly.GetManifestResourceNames()
-        .Where(n => n.StartsWith(Prefix, StringComparison.Ordinal))
-        .OrderBy(n => Path.GetFileNameWithoutExtension(n[Prefix.Length..]), StringComparer.OrdinalIgnoreCase)
-        .ToList();
-    if (names.Count == 0)
+    var licenses = BedrockLan.Licenses.ThirdPartyLicenses.GetAll();
+    Console.OutputEncoding = System.Text.Encoding.UTF8; // the texts include quotes, dashes and (c) signs
+    Console.WriteLine("BedrockLan is licensed under the Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/).");
+    Console.WriteLine("Source code: https://github.com/DanTheMan827/BedrockLAN");
+    if (licenses.Count == 0)
     {
-        Console.WriteLine("No license information was included in this build.");
         return;
     }
 
-    Console.OutputEncoding = System.Text.Encoding.UTF8; // the texts include quotes, dashes and (c) signs
+    Console.WriteLine();
+    Console.WriteLine("It uses the following open-source components:");
     var separator = new string('-', 40);
-    for (var i = 0; i < names.Count; i++)
+    foreach (var (_, text) in licenses.OrderBy(l => l.Key, StringComparer.OrdinalIgnoreCase))
     {
-        if (i > 0)
-        {
-            Console.WriteLine();
-            Console.WriteLine(separator);
-            Console.WriteLine();
-        }
-
-        using var stream = assembly.GetManifestResourceStream(names[i])!;
-        using var reader = new StreamReader(stream);
-        Console.WriteLine(reader.ReadToEnd().TrimEnd());
+        Console.WriteLine();
+        Console.WriteLine(separator);
+        Console.WriteLine();
+        Console.WriteLine(text);
     }
 }
 

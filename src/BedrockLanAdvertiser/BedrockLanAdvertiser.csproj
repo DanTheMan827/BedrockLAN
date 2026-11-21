@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BedrockLan\BedrockLan.csproj" />
+    <!-- Licenses of the open-source components, printed by the "licenses" option. -->
+    <ProjectReference Include="..\BedrockLan.Licenses\BedrockLan.Licenses.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(EnableWebRtc)' == 'true'">
@@ -28,8 +30,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Licenses of the open-source components, printed by the "licenses" option. -->
-    <EmbeddedResource Include="..\..\licenses\*.txt" Link="licenses\%(Filename)%(Extension)" LogicalName="licenses/%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

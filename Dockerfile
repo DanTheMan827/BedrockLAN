@@ -19,11 +19,13 @@ WORKDIR /src
 # Restore first (cached until a project file changes).
 COPY src/BedrockLan/BedrockLan.csproj src/BedrockLan/
 COPY src/BedrockLan.WebRtc/BedrockLan.WebRtc.csproj src/BedrockLan.WebRtc/
+COPY src/BedrockLan.Licenses/BedrockLan.Licenses.csproj src/BedrockLan.Licenses/
 COPY src/BedrockLanAdvertiser/BedrockLanAdvertiser.csproj src/BedrockLanAdvertiser/
 RUN dotnet restore src/BedrockLanAdvertiser/BedrockLanAdvertiser.csproj
 
 COPY src/BedrockLan/ src/BedrockLan/
 COPY src/BedrockLan.WebRtc/ src/BedrockLan.WebRtc/
+COPY src/BedrockLan.Licenses/ src/BedrockLan.Licenses/
 COPY src/BedrockLanAdvertiser/ src/BedrockLanAdvertiser/
 COPY licenses/ licenses/
 RUN dotnet publish src/BedrockLanAdvertiser/BedrockLanAdvertiser.csproj \
@@ -40,6 +42,9 @@ RUN mkdir -p /data/persist && chown -R app:app /data
 VOLUME ["/data"]
 
 COPY --from=build /app /app
+COPY LICENSE /app/LICENSE
+LABEL org.opencontainers.image.licenses="MPL-2.0" \
+      org.opencontainers.image.source="https://github.com/DanTheMan827/BedrockLAN"
 
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_NOLOGO=1

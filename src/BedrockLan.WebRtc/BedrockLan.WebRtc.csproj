@@ -7,6 +7,9 @@
     <LangVersion>12</LangVersion>
     <RootNamespace>BedrockLan.WebRtc</RootNamespace>
     <Description>Optional minimal NetherNet (WebRTC) server for BedrockLan that issues a Transfer packet. Uses SIPSorcery.</Description>
+    <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/DanTheMan827/BedrockLAN</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/DanTheMan827/BedrockLAN.git</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

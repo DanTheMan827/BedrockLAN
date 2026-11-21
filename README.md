@@ -269,10 +269,18 @@ Mojang's docs up to protocol 2259 (1.26.70-preview.26).
 - If a real server on the same machine holds UDP 19132 or 7551 exclusively, that discovery path is disabled with a
   warning.
 
+## License
+
+BedrockLan is licensed under the [Mozilla Public License 2.0](LICENSE). You can use it in open or closed-source
+projects. If you distribute a modified version, the files you changed must stay under the MPL and their source
+must be made available. Your own files can be under any license.
+
 ## Third-party licenses
 
 The open-source projects this repository uses or redistributes, each with its license, are in
-[`licenses/`](licenses), one file per project. The advertiser embeds them: `--licenses` prints them all.
+[`licenses/`](licenses), one file per project. They're embedded in the `BedrockLan.Licenses` project, whose
+`ThirdPartyLicenses.GetAll()` returns them as a dictionary keyed by project name (an app can merge them into its own
+licenses screen). The advertiser uses it: `--licenses` prints them all.
 
 The WebRTC transfer server depends on [SIPSorcery](https://github.com/sipsorcery-org/sipsorcery), whose license is
 BSD-3-Clause with an additional use restriction (section 2 of [`licenses/SIPSorcery.txt`](licenses/SIPSorcery.txt)).
@@ -288,9 +296,11 @@ src/BedrockLan/                       core library (no dependencies)
   Protocol/                           protocol config parser, packet builder, built-in config
   Relay/                              BedrockRelay / RelayServer public API, options, events
 src/BedrockLan.WebRtc/                optional SIPSorcery-based NetherNet transfer server
+src/BedrockLan.Licenses/              the licenses folder, embedded, as a dictionary (ThirdPartyLicenses.GetAll())
 src/BedrockLan.Protocol.Definitions/  C# source of the protocol config (shared source, not a project)
 src/BedrockLanAdvertiser/             command-line advertiser + sample servers.json
 tests/BedrockLan.Tests/               xUnit tests
 tools/ProtocolGen/                    generates the protocol config from the definitions
 licenses/                             licenses of the open-source projects used
+LICENSE                               Mozilla Public License 2.0
 ```
